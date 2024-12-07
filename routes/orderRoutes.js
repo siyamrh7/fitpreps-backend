@@ -6,5 +6,6 @@ const authenticateJWT = require('../middleware/authMiddleware');
 
 router.post('/create', authenticateJWT, orderController.createOrder);
 router.get('/', authenticateJWT, orderController.getAllOrders);
+router.get('/order', authenticateJWT, orderController.getOrder);
 
 module.exports = router;

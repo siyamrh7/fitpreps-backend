@@ -11,15 +11,24 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+
 exports.getAllOrders = async (req, res) => {
   try {
     const ordersCollection = getDB().collection('orders');
-    const orders = await ordersCollection.find().toArray();
+
+    // Query to fetch the 50 most recent orders
+    const orders = await ordersCollection
+      .find()
+      .sort({ createdAt: -1 }) // Sort by createdAt in descending order (most recent first)
+      .limit(100) // Limit the results to 50
+      .toArray();
+
     res.status(200).json(orders);
   } catch (error) {
     res.status(400).json({ message: 'Error fetching orders', error });
   }
 };
+
 
 exports.getOrder = async (req, res) => {
   try {

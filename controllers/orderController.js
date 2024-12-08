@@ -42,7 +42,7 @@ exports.getOrder = async (req, res) => {
         { userId: req.query.userId},
         { user_id: ObjectId.isValid(userId) ? new ObjectId(userId) : userId },
       ],
-    }).toArray();
+    }).sort({ createdAt: -1 }).toArray();
 
     res.status(200).json(orders);
   } catch (error) {

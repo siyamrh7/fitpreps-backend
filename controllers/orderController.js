@@ -32,20 +32,46 @@ exports.getAllOrders = async (req, res) => {
 
 exports.getOrder = async (req, res) => {
   try {
-    const { userId } = req.user
+    const { userId: userTokenId } = req.user; // From the token
+    const queryUserId = req.query.userId; // Optional query parameter
     const ordersCollection = getDB().collection('orders');
 
-    // Find a user by ID
-    // const user = await ordersCollection.findOne({ user_id: new ObjectId(userId) || userId:userId });
+    // Build the query conditions
+
+    // Match `user_id` (ObjectId from token or query)
+    // if (userTokenId) {
+    //   const orders = await ordersCollection
+    //     .find({ user_id: userTokenId })
+    //     .sort({ createdAt: -1 })
+    //     .toArray();
+    //     if (orders && orders.length !== 0) {
+    //       return res.status(200).json(orders);
+    //     }
+        
+    //   }
+    //   if (!orders || orders.length === 0) {
+    //     if (queryUserId) {
+    //       const orders = await ordersCollection
+    //         .find({ userId: queryUserId })
+    //         .sort({ createdAt: -1 })
+    //         .toArray();
+
+    //       return res.status(200).json(orders);
+    //     }
+    //   }
+
     const orders = await ordersCollection.find({
       $or: [
         { userId: req.query.userId},
-        { user_id: ObjectId.isValid(userId) ? new ObjectId(userId) : userId },
+        { user_id: req.user.userId },
       ],
     }).sort({ createdAt: -1 }).toArray();
 
     res.status(200).json(orders);
+
+
   } catch (error) {
-    res.status(400).json({ message: 'Error fetching user by ID', error });
+    console.error("Error fetching orders:", error);
+    res.status(400).json({ message: 'Error fetching orders', error });
   }
 };

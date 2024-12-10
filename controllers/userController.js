@@ -129,3 +129,42 @@ exports.updateAddress = async (req, res) => {
     res.status(400).json({ message: 'Error updating address', error });
   }
 };
+
+exports.updatePoint = async (req, res) => {
+  try {
+    const { point } = req.body; // Extract 'point' from the request body
+    const { userId } = req.user; // Extract 'userId' from authenticated user context
+
+    if (typeof point !== 'number') {
+      return res.status(400).json({ message: 'Invalid point value. It must be a number.' });
+    }
+
+    // Get the MongoDB collection
+    const usersCollection = getDB().collection('users');
+
+    // Check if the user exists
+    const existingUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+    if (!existingUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Increment or decrement the 'point' field
+    const updateResult = await usersCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $inc: { point: point } } // Add the point value (can be positive or negative)
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      return res.status(400).json({ message: 'No changes were made' });
+    }
+
+    // Fetch the updated user
+    const updatedUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+    res.status(200).json({ message: 'Point updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error updating point', error });
+  }
+};

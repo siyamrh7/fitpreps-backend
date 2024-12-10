@@ -8,5 +8,6 @@ router.post('/create', authenticateJWT, userController.createUser);
 router.get('/', userController.getAllUsers);
 router.get('/user',authenticateJWT, userController.getUser);
 router.put('/user',authenticateJWT, userController.updateAddress);
+router.put('/point',authenticateJWT, userController.updatePoint);
 
 module.exports = router;

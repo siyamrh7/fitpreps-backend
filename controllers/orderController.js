@@ -47,7 +47,7 @@ exports.getOrder = async (req, res) => {
     //     if (orders && orders.length !== 0) {
     //       return res.status(200).json(orders);
     //     }
-        
+
     //   }
     //   if (!orders || orders.length === 0) {
     //     if (queryUserId) {
@@ -62,7 +62,7 @@ exports.getOrder = async (req, res) => {
 
     const orders = await ordersCollection.find({
       $or: [
-        { userId: req.query.userId},
+        { userId: req.query.userId },
         { user_id: req.user.userId },
       ],
     }).sort({ createdAt: -1 }).toArray();
@@ -73,5 +73,101 @@ exports.getOrder = async (req, res) => {
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(400).json({ message: 'Error fetching orders', error });
+  }
+};
+
+
+
+// Function to get total sales, total taxes, etc.
+exports.getAnalytics = async (req, res) => {
+  try {
+    const ordersCollection = getDB().collection('orders');
+
+    // Aggregation for Total Sales
+    const totalSales = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },  // Match only completed orders
+      {
+        $group: {
+          _id: null,
+          totalSales: {
+            $sum: { $toDouble: "$total" }  // Convert the total (string) to a number for summing
+          }
+        }
+      }
+    ]).toArray();
+
+    // Aggregation for Total Taxes (including shipping tax and order tax)
+    const totalTaxes = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },  // Match only completed orders
+      {
+        $group: {
+          _id: null,
+          totalTaxes: {
+            $sum: {
+              $add: [
+                { $toDouble: "$metadata._order_tax" },  // Convert _order_tax (string) to a number
+                { $toDouble: "$metadata._order_shipping_tax" }  // Convert _order_shipping_tax (string) to a number
+              ]
+            }
+          }
+        }
+      }
+    ]).toArray();
+    // Aggregation for Total Taxes (including shipping tax and order tax)
+    const totalProductTaxes = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },  // Match only completed orders
+      {
+        $group: {
+          _id: null,
+          totalProductTaxes: {
+            $sum: { $toDouble: "$metadata._order_tax" },  // Convert _order_tax (string) to a number
+              
+            
+          }
+        }
+      }
+    ]).toArray();
+      // Aggregation for Total Taxes (including shipping tax and order tax)
+      const totalShippingTaxes = await ordersCollection.aggregate([
+        { $match: { status: 'completed' } },  // Match only completed orders
+        {
+          $group: {
+            _id: null,
+            totalShippingTaxes: {
+              $sum: { $toDouble: "$metadata._order_shipping_tax" },  // Convert _order_tax (string) to a number
+                
+              
+            }
+          }
+        }
+      ]).toArray();
+    // Aggregation for Total Discounts (considering cart discount)
+    const totalDiscounts = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },  // Match only completed orders
+      {
+        $group: {
+          _id: null,
+          totalDiscounts: {
+            $sum: { $toDouble: "$metadata._cart_discount" }  // Convert _cart_discount (string) to a number
+          }
+        }
+      }
+    ]).toArray();
+
+
+    // Prepare the analytics response object
+    const analytics = {
+      totalSales: totalSales[0]?.totalSales || 0,
+      totalTaxes: totalTaxes[0]?.totalTaxes || 0,
+      totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
+      totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
+      totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
+    };
+
+    // Send the analytics response
+    res.status(200).json(analytics);
+
+  } catch (error) {
+    res.status(400).json({ message: 'Error fetching analytics', error });
   }
 };

@@ -12,20 +12,60 @@ exports.createOrder = async (req, res) => {
 };
 
 
+// exports.getAllOrders = async (req, res) => {
+//   try {
+//     const ordersCollection = getDB().collection('orders');
+
+//     // Query to fetch the 50 most recent orders
+//     const orders = await ordersCollection
+//       .find()
+//       .sort({ createdAt: -1 }) // Sort by createdAt in descending order (most recent first)
+//       .limit(100) // Limit the results to 50
+//       .toArray();
+
+//     res.status(200).json(orders);
+//   } catch (error) {
+//     res.status(400).json({ message: 'Error fetching orders', error });
+//   }
+// };
 exports.getAllOrders = async (req, res) => {
   try {
-    const ordersCollection = getDB().collection('orders');
+    const ordersCollection = getDB().collection("orders");
 
-    // Query to fetch the 50 most recent orders
+    // Extract query parameters
+    const { page = 1, limit = 20, status = "" } = req.query;
+
+    // Convert page and limit to integers
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+
+    // Build the query object for filtering
+    const query = {};
+    if (status) {
+      query.status = status; // Add status filter if provided
+    }
+
+    // Fetch total count of orders matching the query
+    const totalOrders = await ordersCollection.countDocuments(query);
+
+    // Fetch paginated and filtered orders
     const orders = await ordersCollection
-      .find()
-      .sort({ createdAt: -1 }) // Sort by createdAt in descending order (most recent first)
-      .limit(100) // Limit the results to 50
+      .find(query)
+      .sort({ createdAt: -1 }) // Sort by createdAt descending
+      .skip((pageNumber - 1) * pageSize) // Skip documents for pagination
+      .limit(pageSize) // Limit the number of documents per page
       .toArray();
 
-    res.status(200).json(orders);
+    // Return paginated results and metadata
+    res.status(200).json({
+      orders,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(totalOrders / pageSize),
+      totalOrders,
+    });
   } catch (error) {
-    res.status(400).json({ message: 'Error fetching orders', error });
+    console.error("Error fetching orders:", error);
+    res.status(400).json({ message: "Error fetching orders", error });
   }
 };
 
@@ -153,8 +193,15 @@ exports.getAnalytics = async (req, res) => {
         }
       }
     ]).toArray();
+    // Aggregation for Total Users
+    const usersCollection = getDB().collection('users');
+    const totalUsers = await usersCollection.countDocuments();  // Count all users in the users collection
 
-
+    // Aggregation for Total Orders
+    const totalOrders = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },  // Match only completed orders
+      { $count: "totalOrders" }  // Count total completed orders
+    ]).toArray();
     // Prepare the analytics response object
     const analytics = {
       totalSales: totalSales[0]?.totalSales || 0,
@@ -162,6 +209,8 @@ exports.getAnalytics = async (req, res) => {
       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
+      totalUsers: totalUsers,  // Total distinct users
+      totalOrders: totalOrders[0]?.totalOrders || 0,  // Total completed orders
     };
 
     // Send the analytics response

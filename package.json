@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.11.0",
     "nodemon": "^3.1.7",
+    "paynl-sdk": "^1.1.4",
     "wordpress-hash-node": "^1.0.0"
   }
 }

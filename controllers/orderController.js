@@ -1,33 +1,199 @@
 // controllers/orderController.js
 const { getDB } = require('../config/db');
 const { ObjectId } = require('mongodb'); // Import ObjectId to handle MongoDB IDs
+// Import Pay.nl SDK
+var Paynl = require('paynl-sdk');
+
+// Configure Pay.nl with your credentials
+Paynl.Config.setApiToken('e4bfc68279643733d0e6d08e47e6f0cf5f35ea87');   // Replace with your API token
+Paynl.Config.setServiceId('SL-5241-4593');   // Replace with your service ID
+// HTML template
+
+// Create order API route
 exports.createOrder = async (req, res) => {
   try {
+    const { total } = req.body;
+
+
+    // Step 2: Create an Order in the Database
     const ordersCollection = getDB().collection('orders');
-    await ordersCollection.insertOne(req.body);  // Save the full body as-is
-    res.status(201).json({ message: 'Order created successfully' });
+
+    const results = await ordersCollection.insertOne(req.body);
+
+    // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
+    const paymentData = {
+      amount: total,               // Amount to charge (in Euros)
+      returnUrl: 'http://localhost:3000/payment-success/',  // Redirect after successful payment
+      cancelUrl: 'http://localhost:3000/payment-success/',  // Redirect if payment is canceled
+      ipAddress: req.ip,                 // User's IP address
+      enduser: {
+
+        emailAddress: req.body.metadata._billing_email,
+
+      },
+    };
+    // Start the payment transaction using Pay.nl SDK
+    Paynl.Transaction.start(paymentData)
+      .subscribe(
+        async function (result) {
+          // Successfully started payment
+          const paymentUrl = result.paymentURL;
+          const transactionId = result.transactionId;
+          // Update the order with payment URL and transactionId
+          await ordersCollection.updateOne(
+            { _id: results.insertedId },
+            {
+              $set: {
+                'metadata.transactionId': transactionId, // Adds or updates the transactionId in metadata
+                status: 'pending',  // Updates status to 'pending' (or awaiting_payment)
+                'metadata._customer_ip_address': req.ip,
+                updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
+              },
+            }
+          );
+
+
+          // Send the payment URL back to the client for completion
+          return res.status(200).json({
+            message: 'Order created successfully, proceed to payment',
+            paymentUrl,
+            transactionId,
+          });
+        },
+        async function (error) {
+          // If there was an error in the payment creation process
+          console.error('Error initiating payment:', error);
+          // Update the order status and send error response
+          return res.status(201).json({ message: 'Payment Failed', error });
+
+        }
+      );
+
+    // If the payment is not through Pay.nl, assume another payment method
+
   } catch (error) {
-    res.status(400).json({ message: 'Error creating order', error });
+    res.status(400).json({ message: 'Error creating order', error: error.message });
+  }
+
+};
+exports.checkPayment = async (req, res) => {
+  const { transactionId } = req.params;
+
+  try {
+    const username = "dc8b47dd-32d8-46ef-b1c5-17491a69b4b4";
+    const password = "2158b994f835447696c88f1f38e5bde8";
+    const ordersCollection = getDB().collection('orders');
+    const orderData = await ordersCollection.findOne({ 'metadata.transactionId': transactionId });
+    // Encode the credentials in base64
+    const base64Credentials = btoa(`${username}:${password}`);
+    // Extract parameters from the request if needed
+    const parcelData = {
+      parcel: {
+        name: orderData.metadata._shipping_first_name + " " + orderData.metadata._shipping_last_name,
+        address: orderData.metadata._shipping_address_1,
+        city: orderData.metadata._shipping_city.slice(0, 28),
+        postal_code: orderData.metadata._shipping_postcode,
+        telephone: orderData.metadata._shipping_phone,
+        request_label: true,
+        email: orderData.metadata._shipping_email,
+        data: {},
+        country: orderData.metadata._shipping_country,
+        shipment: {
+          id: orderData.metadata.deliveryMethod
+        },
+        weight: orderData.totalWeight || 10.000,
+        order_number: orderData._id,
+        total_order_value_currency: "EUR",
+        total_order_value: orderData.total,
+        house_number: orderData.metadata._shipping_address_2,
+        parcel_items: orderData.items.map((item) => {
+          return {
+            description: item.order_item_name,
+            quantity: item.meta?._qty,
+            value: item.meta?._line_total,
+            weight: item.meta?._weight,
+            product_id:item.meta?._id,
+            item_id: item.meta?._id,
+            sku: item.meta?._id
+          };
+        })
+      }
+    }
+
+    const url = 'https://panel.sendcloud.sc/api/v2/parcels';
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Basic ${base64Credentials}`
+      },
+      body: JSON.stringify(parcelData)
+    };
+
+    // Fetch transaction status from Pay.nl
+    Paynl.Transaction.get(transactionId).subscribe(
+      async (result) => {
+        let paymentStatus = 'pending';
+        let paymentMethod = 'UNKNOWN';
+
+        // Determine the payment status
+        if (result.isPaid()) {
+          paymentStatus = 'processing';
+          // Fetch data from SendCloud API
+          const response = await fetch(url, options);
+
+          // Handle response
+          if (!response.ok) {
+            // Log and handle HTTP errors
+            const errorText = await response.text();
+            console.log(errorText)
+          }
+          await response.json();
+        } else if (result.isCanceled()) {
+          paymentStatus = 'cancelled';
+          console.log('Transaction is canceled');
+        } else if (result.isBeingVerified()) {
+          paymentStatus = 'on-hold';
+          console.log('Transaction is being verified');
+        }
+
+        // Get payment method name if available
+        paymentMethod = result.paymentDetails?.paymentProfileName || 'UNKNOWN';
+
+        // Update the order in your database
+        await ordersCollection.updateOne(
+          { 'metadata.transactionId': transactionId }, // Match transactionId
+          {
+            $set: {
+              status: paymentStatus,
+              'metadata._payment_method_title': paymentMethod,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        // Send response
+        res.status(200).json({
+          message: 'Payment status updated successfully',
+          transactionId: transactionId,
+          status: paymentStatus,
+          result,
+          paymentMethod: paymentMethod,
+        });
+      },
+      (error) => {
+        console.error('Error fetching transaction:', error);
+        res.status(400).json({ message: 'Error fetching transaction status', error });
+      }
+    );
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    res.status(500).json({ message: 'Internal server error', error });
   }
 };
 
 
-// exports.getAllOrders = async (req, res) => {
-//   try {
-//     const ordersCollection = getDB().collection('orders');
-
-//     // Query to fetch the 50 most recent orders
-//     const orders = await ordersCollection
-//       .find()
-//       .sort({ createdAt: -1 }) // Sort by createdAt in descending order (most recent first)
-//       .limit(100) // Limit the results to 50
-//       .toArray();
-
-//     res.status(200).json(orders);
-//   } catch (error) {
-//     res.status(400).json({ message: 'Error fetching orders', error });
-//   }
-// };
 exports.getAllOrders = async (req, res) => {
   try {
     const ordersCollection = getDB().collection("orders");
@@ -76,29 +242,6 @@ exports.getOrder = async (req, res) => {
     const queryUserId = req.query.userId; // Optional query parameter
     const ordersCollection = getDB().collection('orders');
 
-    // Build the query conditions
-
-    // Match `user_id` (ObjectId from token or query)
-    // if (userTokenId) {
-    //   const orders = await ordersCollection
-    //     .find({ user_id: userTokenId })
-    //     .sort({ createdAt: -1 })
-    //     .toArray();
-    //     if (orders && orders.length !== 0) {
-    //       return res.status(200).json(orders);
-    //     }
-
-    //   }
-    //   if (!orders || orders.length === 0) {
-    //     if (queryUserId) {
-    //       const orders = await ordersCollection
-    //         .find({ userId: queryUserId })
-    //         .sort({ createdAt: -1 })
-    //         .toArray();
-
-    //       return res.status(200).json(orders);
-    //     }
-    //   }
 
     const orders = await ordersCollection.find({
       $or: [
@@ -161,26 +304,26 @@ exports.getAnalytics = async (req, res) => {
           _id: null,
           totalProductTaxes: {
             $sum: { $toDouble: "$metadata._order_tax" },  // Convert _order_tax (string) to a number
-              
-            
+
+
           }
         }
       }
     ]).toArray();
-      // Aggregation for Total Taxes (including shipping tax and order tax)
-      const totalShippingTaxes = await ordersCollection.aggregate([
-        { $match: { status: 'completed' } },  // Match only completed orders
-        {
-          $group: {
-            _id: null,
-            totalShippingTaxes: {
-              $sum: { $toDouble: "$metadata._order_shipping_tax" },  // Convert _order_tax (string) to a number
-                
-              
-            }
+    // Aggregation for Total Taxes (including shipping tax and order tax)
+    const totalShippingTaxes = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },  // Match only completed orders
+      {
+        $group: {
+          _id: null,
+          totalShippingTaxes: {
+            $sum: { $toDouble: "$metadata._order_shipping_tax" },  // Convert _order_tax (string) to a number
+
+
           }
         }
-      ]).toArray();
+      }
+    ]).toArray();
     // Aggregation for Total Discounts (considering cart discount)
     const totalDiscounts = await ordersCollection.aggregate([
       { $match: { status: 'completed' } },  // Match only completed orders
@@ -218,5 +361,50 @@ exports.getAnalytics = async (req, res) => {
 
   } catch (error) {
     res.status(400).json({ message: 'Error fetching analytics', error });
+  }
+};
+
+
+
+
+exports.getShippingMethods = async (req, res) => {
+  try {
+    const username = "dc8b47dd-32d8-46ef-b1c5-17491a69b4b4";
+    const password = "2158b994f835447696c88f1f38e5bde8";
+
+    // Encode the credentials in base64
+    const base64Credentials = btoa(`${username}:${password}`);
+    // Extract parameters from the request if needed
+    const { toCountry = 'NL' } = req.query; // Default to 'NE' if no `to_country` is provided
+
+    const url = `https://panel.sendcloud.sc/api/v2/shipping_methods?to_country=${toCountry}`;
+    const options = {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Basic ${base64Credentials}`,
+      },
+    };
+
+    // Fetch data from SendCloud API
+    const response = await fetch(url, options);
+
+    // Handle response
+    if (!response.ok) {
+      // Log and handle HTTP errors
+      const errorText = await response.text();
+      throw new Error(`Error fetching shipping methods: ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    // Respond with the shipping methods data
+    res.status(200).json(data);
+
+  } catch (error) {
+    console.error('Error fetching shipping methods:', error.message);
+
+    // Respond with an error
+    res.status(400).json({ message: 'Error fetching shipping methods', error: error.message });
   }
 };

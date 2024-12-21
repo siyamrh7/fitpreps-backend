@@ -5,8 +5,8 @@ const { ObjectId } = require('mongodb'); // Import ObjectId to handle MongoDB ID
 var Paynl = require('paynl-sdk');
 
 // Configure Pay.nl with your credentials
-Paynl.Config.setApiToken('e4bfc68279643733d0e6d08e47e6f0cf5f35ea87');   // Replace with your API token
-Paynl.Config.setServiceId('SL-5241-4593');   // Replace with your service ID
+Paynl.Config.setApiToken(process.env.PAY_NL_API_TOKEN);   // Replace with your API token
+Paynl.Config.setServiceId(process.env.PAY_NL_SERVICE_ID);   // Replace with your service ID
 // HTML template
 
 // Create order API route
@@ -19,19 +19,35 @@ exports.createOrder = async (req, res) => {
     const ordersCollection = getDB().collection('orders');
 
     const results = await ordersCollection.insertOne(req.body);
-
+    if(total == 0 ){
+      await ordersCollection.updateOne(
+        { _id: results.insertedId },
+        {
+          $set: {
+            'metadata.transactionId': null, // Adds or updates the transactionId in metadata
+            status: 'processing',  // Updates status to 'pending' (or awaiting_payment)
+            'metadata._customer_ip_address': req.ip,
+            updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
+          },
+        }
+      );
+      return res.status(200).json({
+        message: 'Order created successfully',
+        paymentUrl:`${process.env.FRONTEND_URI}/profile?tab=1`,
+      
+      });
+    }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
     const paymentData = {
       amount: total,               // Amount to charge (in Euros)
-      returnUrl: 'http://localhost:3000/payment-success/',  // Redirect after successful payment
-      cancelUrl: 'http://localhost:3000/payment-success/',  // Redirect if payment is canceled
+      returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect after successful payment
+      cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
       ipAddress: req.ip,                 // User's IP address
       enduser: {
-
-        emailAddress: req.body.metadata._billing_email,
-
+        emailAddress: req.body.metadata._shipping_email,
       },
     };
+   
     // Start the payment transaction using Pay.nl SDK
     Paynl.Transaction.start(paymentData)
       .subscribe(
@@ -80,8 +96,8 @@ exports.checkPayment = async (req, res) => {
   const { transactionId } = req.params;
 
   try {
-    const username = "dc8b47dd-32d8-46ef-b1c5-17491a69b4b4";
-    const password = "2158b994f835447696c88f1f38e5bde8";
+    const username = process.env.SENDCLOUD_API_USERNAME;
+    const password = process.env.SENDCLOUD_API_PASSWORD;
     const ordersCollection = getDB().collection('orders');
     const orderData = await ordersCollection.findOne({ 'metadata.transactionId': transactionId });
     // Encode the credentials in base64
@@ -94,7 +110,7 @@ exports.checkPayment = async (req, res) => {
         city: orderData.metadata._shipping_city.slice(0, 28),
         postal_code: orderData.metadata._shipping_postcode,
         telephone: orderData.metadata._shipping_phone,
-        request_label: true,
+        request_label: false,
         email: orderData.metadata._shipping_email,
         data: {},
         country: orderData.metadata._shipping_country,
@@ -141,15 +157,15 @@ exports.checkPayment = async (req, res) => {
         if (result.isPaid()) {
           paymentStatus = 'processing';
           // Fetch data from SendCloud API
-          const response = await fetch(url, options);
+          // const response = await fetch(url, options);
 
-          // Handle response
-          if (!response.ok) {
-            // Log and handle HTTP errors
-            const errorText = await response.text();
-            console.log(errorText)
-          }
-          await response.json();
+          // // Handle response
+          // if (!response.ok) {
+          //   // Log and handle HTTP errors
+          //   const errorText = await response.text();
+          //   console.log(errorText)
+          // }
+          // await response.json();
         } else if (result.isCanceled()) {
           paymentStatus = 'cancelled';
           console.log('Transaction is canceled');
@@ -172,7 +188,18 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
+        if (result.isPaid()) {
+          // Fetch data from SendCloud API
+          const response = await fetch(url, options);
 
+          // Handle response
+          if (!response.ok) {
+            // Log and handle HTTP errors
+            const errorText = await response.text();
+            console.log(errorText)
+          }
+          await response.json();
+        }
         // Send response
         res.status(200).json({
           message: 'Payment status updated successfully',
@@ -369,8 +396,8 @@ exports.getAnalytics = async (req, res) => {
 
 exports.getShippingMethods = async (req, res) => {
   try {
-    const username = "dc8b47dd-32d8-46ef-b1c5-17491a69b4b4";
-    const password = "2158b994f835447696c88f1f38e5bde8";
+    const username = process.env.SENDCLOUD_API_USERNAME;
+    const password = process.env.SENDCLOUD_API_PASSWORD;
 
     // Encode the credentials in base64
     const base64Credentials = btoa(`${username}:${password}`);

@@ -6,8 +6,12 @@ const authenticateJWT = require('../middleware/authMiddleware');
 
 router.post('/create', orderController.createOrder);
 router.get('/checkpayment/:transactionId', orderController.checkPayment);
+router.delete('/orders', orderController.deleteOrders);
+router.put('/status', orderController.updateOrderStatus);
 
 router.get('/',  orderController.getAllOrders);
+router.get('/order/:id',  orderController.getOrderById);
+
 router.get('/order', authenticateJWT, orderController.getOrder);
 router.get('/analytics',  orderController.getAnalytics);
 router.get('/getshipping', orderController.getShippingMethods);

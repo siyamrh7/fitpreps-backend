@@ -1,6 +1,7 @@
 // controllers/orderController.js
 const { getDB } = require('../config/db');
 const { ObjectId } = require('mongodb'); // Import ObjectId to handle MongoDB IDs
+const moment = require('moment'); // Import Moment.js to handle dates
 // Import Pay.nl SDK
 var Paynl = require('paynl-sdk');
 
@@ -63,7 +64,6 @@ exports.createOrder = async (req, res) => {
                 'metadata.transactionId': transactionId, // Adds or updates the transactionId in metadata
                 status: 'pending',  // Updates status to 'pending' (or awaiting_payment)
                 'metadata._customer_ip_address': req.ip,
-                updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
               },
             }
           );
@@ -126,7 +126,7 @@ exports.checkPayment = async (req, res) => {
           return {
             description: item.order_item_name,
             quantity: item.meta?._qty,
-            value: item.meta?._line_total,
+            value: item.meta?._line_total/item.meta?._qty,
             weight: item.meta?._weight,
             product_id:item.meta?._id,
             item_id: item.meta?._id,
@@ -184,11 +184,40 @@ exports.checkPayment = async (req, res) => {
             $set: {
               status: paymentStatus,
               'metadata._payment_method_title': paymentMethod,
-              updatedAt: new Date(),
             },
           }
         );
         if (result.isPaid()) {
+          // Update stock levels in the products collection
+
+          // const productsCollection = getDB().collection('products');
+
+          // // Build bulk operations
+          // const bulkOperations = orderData.items.map((item) => {
+          //   const productName = item.order_item_name; // Name of the product
+          //   const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
+          
+          //   return {
+          //     updateOne: {
+          //       filter: {
+          //         name: productName,
+          //         $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
+          //       },
+          //       update: [
+          //         {
+          //           $set: {
+          //             "metadata._stock": {
+          //               $toString: { $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Decrement and convert back to string
+          //             },
+          //           },
+          //         },
+          //       ],
+          //     },
+          //   };
+          // });
+          // const result = await productsCollection.bulkWrite(bulkOperations);
+          // console.log(`${result.modifiedCount} products updated successfully.`);
+
           // Fetch data from SendCloud API
           const response = await fetch(url, options);
 
@@ -221,12 +250,55 @@ exports.checkPayment = async (req, res) => {
 };
 
 
+// exports.getAllOrders = async (req, res) => {
+//   try {
+//     const ordersCollection = getDB().collection("orders");
+
+//     // Extract query parameters
+//     const { page = 1, limit = 20, status = "" } = req.query;
+
+//     // Convert page and limit to integers
+//     const pageNumber = parseInt(page, 10);
+//     const pageSize = parseInt(limit, 10);
+
+//     // Build the query object for filtering
+//     const query = {};
+//     if (status) {
+//       query.status = status; // Add status filter if provided
+//     }
+
+//     // Fetch total count of orders matching the query
+//     const totalOrders = await ordersCollection.countDocuments(query);
+
+//     // Fetch paginated and filtered orders
+//     const orders = await ordersCollection
+//       .find(query)
+//       .sort({ createdAt: -1 }) // Sort by createdAt descending
+//       .skip((pageNumber - 1) * pageSize) // Skip documents for pagination
+//       .limit(pageSize) // Limit the number of documents per page
+//       .toArray();
+
+//     // Return paginated results and metadata
+//     res.status(200).json({
+//       orders,
+//       currentPage: pageNumber,
+//       totalPages: Math.ceil(totalOrders / pageSize),
+//       totalOrders,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error);
+//     res.status(400).json({ message: "Error fetching orders", error });
+//   }
+// };
+
+
+
 exports.getAllOrders = async (req, res) => {
   try {
     const ordersCollection = getDB().collection("orders");
 
     // Extract query parameters
-    const { page = 1, limit = 20, status = "" } = req.query;
+    const { page = 1, limit = 20, status = "", deliveryDateFilter = "" } = req.query;
 
     // Convert page and limit to integers
     const pageNumber = parseInt(page, 10);
@@ -234,8 +306,47 @@ exports.getAllOrders = async (req, res) => {
 
     // Build the query object for filtering
     const query = {};
+
     if (status) {
       query.status = status; // Add status filter if provided
+    }
+
+    // Handling delivery date filter
+    if (deliveryDateFilter) {
+      const today = moment().startOf('day');
+      let filterDateRange;
+
+      switch (deliveryDateFilter) {
+        case 'today':
+          filterDateRange = {
+            $gte: today.format('YYYY-MM-DD'), 
+            $lt: today.add(1, 'day').format('YYYY-MM-DD') // Today range
+          };
+          break;
+        case 'next-day':
+          filterDateRange = {
+            $gte: today.add(1, 'day').format('YYYY-MM-DD'),
+            $lt: today.add(1, 'day').add(1, 'day').format('YYYY-MM-DD') // Next day range
+          };
+          break;
+        case 'next-three-days':
+          filterDateRange = {
+            $gte: today.add(1, 'day').format('YYYY-MM-DD'),
+            $lt: today.add(4, 'days').format('YYYY-MM-DD') // Next 3 days range
+          };
+          break;
+        case 'next-week':
+          filterDateRange = {
+            $gte: today.add(1, 'day').format('YYYY-MM-DD'),
+            $lt: today.add(1, 'week').format('YYYY-MM-DD') // Next week range
+          };
+          break;
+        default:
+          filterDateRange = {};
+      }
+
+      // Update the query to include the date range filter
+      query["metadata._delivery_date"] = filterDateRange;
     }
 
     // Fetch total count of orders matching the query
@@ -263,10 +374,11 @@ exports.getAllOrders = async (req, res) => {
 };
 
 
+
 exports.getOrder = async (req, res) => {
   try {
-    const { userId: userTokenId } = req.user; // From the token
-    const queryUserId = req.query.userId; // Optional query parameter
+    // const { userId: userTokenId } = req.user; // From the token
+    // const queryUserId = req.query.userId; // Optional query parameter
     const ordersCollection = getDB().collection('orders');
 
 
@@ -285,8 +397,108 @@ exports.getOrder = async (req, res) => {
     res.status(400).json({ message: 'Error fetching orders', error });
   }
 };
+exports.getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params; // Extract order ID from request parameters
 
+    // Validate that the ID is a valid ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
 
+    const ordersCollection = getDB().collection('orders');
+
+    // Find the order by its ID
+    const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
+
+    // If no order is found, return a 404 error
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Return the found order
+    res.status(200).json({ message: 'Order retrieved successfully', order });
+
+  } catch (error) {
+    console.error('Error retrieving order:', error);
+    res.status(500).json({ message: 'Error retrieving order', error: error.message });
+  }
+};
+// Controller to delete multiple orders by their IDs
+exports.deleteOrders = async (req, res) => {
+  try {
+    const { orderIds } = req.body; // Array of order IDs from the request body
+
+    // Validate that orderIds is an array and not empty
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ message: 'Order IDs are required and must be an array' });
+    }
+
+    // Ensure all IDs are valid ObjectIds
+    const invalidIds = orderIds.filter(id => !ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ message: 'Invalid order ID(s): ' + invalidIds.join(', ') });
+    }
+
+    const ordersCollection = getDB().collection('orders');
+
+    // Delete the orders by their IDs
+    const result = await ordersCollection.deleteMany({
+      _id: { $in: orderIds.map(id => new ObjectId(id)) } // Convert string IDs to ObjectId
+    });
+
+    // If no orders were deleted, return a message
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'No orders found to delete' });
+    }
+
+    res.status(200).json({ message: `${result.deletedCount} orders deleted successfully` });
+
+  } catch (error) {
+    console.error('Error deleting orders:', error);
+    res.status(500).json({ message: 'Error deleting orders', error: error.message });
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { orderIds, status } = req.body.data; // Array of order IDs and the new status from the request body
+    // Validate that orderIds is an array and not empty
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ message: 'Order IDs are required and must be an array' });
+    }
+
+    // Validate that status is a string and not empty
+    if (typeof status !== 'string' || status.trim() === '') {
+      return res.status(400).json({ message: 'Status is required and must be a valid string' });
+    }
+
+    // Ensure all IDs are valid ObjectIds
+    const invalidIds = orderIds.filter(id => !ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ message: 'Invalid order ID(s): ' + invalidIds.join(', ') });
+    }
+
+    const ordersCollection = getDB().collection('orders');
+
+    // Update the status of the orders by their IDs
+    const result = await ordersCollection.updateMany(
+      { _id: { $in: orderIds.map(id => new ObjectId(id)) } }, // Convert string IDs to ObjectId
+      { $set: { status: status } } // Set the new status
+    );
+
+    // If no orders were updated, return a message
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'No orders found to update' });
+    }
+
+    res.status(200).json({ message: `${result.modifiedCount} orders status updated successfully` });
+
+  } catch (error) {
+    console.error('Error updating orders status:', error);
+    res.status(500).json({ message: 'Error updating orders status', error: error.message });
+  }
+};
 
 // Function to get total sales, total taxes, etc.
 exports.getAnalytics = async (req, res) => {

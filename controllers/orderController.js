@@ -45,7 +45,7 @@ exports.createOrder = async (req, res) => {
       cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
       ipAddress: req.ip,                 // User's IP address
       enduser: {
-        emailAddress: req.body.metadata._shipping_email,
+        emailAddress: req.body.metadata._billing_email,
       },
     };
    
@@ -293,12 +293,101 @@ exports.checkPayment = async (req, res) => {
 
 
 
+
+// exports.getAllOrders = async (req, res) => {
+//   try {
+//     const ordersCollection = getDB().collection("orders");
+
+//     // Extract query parameters
+//     const { page = 1, limit = 20, status = "", deliveryDateFilter = "" } = req.query;
+
+//     // Convert page and limit to integers
+//     const pageNumber = parseInt(page, 10);
+//     const pageSize = parseInt(limit, 10);
+
+//     // Build the query object for filtering
+//     const query = {};
+
+//     if (status) {
+//       query.status = status; // Add status filter if provided
+//     }
+
+//     // Handling delivery date filter
+//     if (deliveryDateFilter) {
+//       const today = moment().startOf('day');
+//       let filterDateRange;
+
+//       switch (deliveryDateFilter) {
+//         case 'today':
+//           filterDateRange = {
+//             $gte: today.format('YYYY-MM-DD'), 
+//             $lt: today.add(1, 'day').format('YYYY-MM-DD') // Today range
+//           };
+//           break;
+//         case 'next-day':
+//           filterDateRange = {
+//             $gte: today.add(1, 'day').format('YYYY-MM-DD'),
+//             $lt: today.add(1, 'day').add(1, 'day').format('YYYY-MM-DD') // Next day range
+//           };
+//           break;
+//         case 'next-three-days':
+//           filterDateRange = {
+//             $gte: today.add(1, 'day').format('YYYY-MM-DD'),
+//             $lt: today.add(4, 'days').format('YYYY-MM-DD') // Next 3 days range
+//           };
+//           break;
+//         case 'next-week':
+//           filterDateRange = {
+//             $gte: today.add(1, 'day').format('YYYY-MM-DD'),
+//             $lt: today.add(1, 'week').format('YYYY-MM-DD') // Next week range
+//           };
+//           break;
+//         default:
+//           filterDateRange = {};
+//       }
+
+//       // Update the query to include the date range filter
+//       query["metadata._delivery_date"] = filterDateRange;
+//     }
+
+//     // Fetch total count of orders matching the query
+//     const totalOrders = await ordersCollection.countDocuments(query);
+
+//     // Fetch paginated and filtered orders
+//     const orders = await ordersCollection
+//       .find(query)
+//       .sort({ createdAt: -1 }) // Sort by createdAt descending
+//       .skip((pageNumber - 1) * pageSize) // Skip documents for pagination
+//       .limit(pageSize) // Limit the number of documents per page
+//       .toArray();
+
+//     // Return paginated results and metadata
+//     res.status(200).json({
+//       orders,
+//       currentPage: pageNumber,
+//       totalPages: Math.ceil(totalOrders / pageSize),
+//       totalOrders,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error);
+//     res.status(400).json({ message: "Error fetching orders", error });
+//   }
+// };
+
+
+
 exports.getAllOrders = async (req, res) => {
   try {
     const ordersCollection = getDB().collection("orders");
 
     // Extract query parameters
-    const { page = 1, limit = 20, status = "", deliveryDateFilter = "" } = req.query;
+    const {
+      page = 1, 
+      limit = 20, 
+      status = "", 
+      deliveryDateFilter = "", 
+      deliveryDate = "" // Specific delivery date from the date picker
+    } = req.query;
 
     // Convert page and limit to integers
     const pageNumber = parseInt(page, 10);
@@ -312,6 +401,42 @@ exports.getAllOrders = async (req, res) => {
     }
 
     // Handling delivery date filter
+    // if (deliveryDateFilter) {
+    //   const today = moment().startOf('day');
+    //   let filterDateRange;
+
+    //   switch (deliveryDateFilter) {
+    //     case 'today':
+    //       filterDateRange = {
+    //         $gte: today.toDate(),
+    //         $lt: today.add(1, 'day').toDate() // Today range
+    //       };
+    //       break;
+    //     case 'next-day':
+    //       filterDateRange = {
+    //         $gte: today.add(1, 'day').toDate(),
+    //         $lt: today.add(1, 'day').add(1, 'day').toDate() // Next day range
+    //       };
+    //       break;
+    //     case 'next-three-days':
+    //       filterDateRange = {
+    //         $gte: today.add(1, 'day').toDate(),
+    //         $lt: today.add(4, 'days').toDate() // Next 3 days range
+    //       };
+    //       break;
+    //     case 'next-week':
+    //       filterDateRange = {
+    //         $gte: today.add(1, 'day').toDate(),
+    //         $lt: today.add(1, 'week').toDate() // Next week range
+    //       };
+    //       break;
+    //     default:
+    //       filterDateRange = {};
+    //   }
+
+    //   // Update the query to include the date range filter
+    //   query["metadata._delivery_date"] = filterDateRange;
+    // }
     if (deliveryDateFilter) {
       const today = moment().startOf('day');
       let filterDateRange;
@@ -335,7 +460,7 @@ exports.getAllOrders = async (req, res) => {
             $lt: today.add(4, 'days').format('YYYY-MM-DD') // Next 3 days range
           };
           break;
-        case 'next-week':
+        case 'this-week':
           filterDateRange = {
             $gte: today.add(1, 'day').format('YYYY-MM-DD'),
             $lt: today.add(1, 'week').format('YYYY-MM-DD') // Next week range
@@ -348,6 +473,18 @@ exports.getAllOrders = async (req, res) => {
       // Update the query to include the date range filter
       query["metadata._delivery_date"] = filterDateRange;
     }
+
+    // Filter by specific delivery date if provided
+    if (deliveryDate) {
+      const specificDate = moment(deliveryDate, 'YYYY-MM-DD').startOf('day');
+      const nextDay = specificDate.clone().add(1, 'day');
+  
+      // Update query to filter by specific delivery date
+      query["metadata._delivery_date"] = {
+          $gte: specificDate.toISOString(), // Start of the day
+          $lt: nextDay.toISOString() // End of the day
+      };
+  }
 
     // Fetch total count of orders matching the query
     const totalOrders = await ordersCollection.countDocuments(query);

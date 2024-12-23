@@ -6,21 +6,22 @@ const authenticateAdmin = require('../middleware/authAdminMiddleware');
 const authenticateJWT = require('../middleware/authMiddleware');
 
 // Create a new coupon
-router.post('/create', authenticateAdmin, couponController.createCoupon);
+router.post('/create', couponController.createCoupon);
 
 // Get all coupons
-router.get('/', authenticateAdmin, couponController.getAllCoupons);
+router.get('/', couponController.getAllCoupons);
+router.get('/:id', couponController.getCouponById);
 
 // Get a single coupon by code
 router.get('/coupon/:code', authenticateAdmin, couponController.getCouponByCode);
 
 // Update a coupon by code
-router.put('/update/:code', authenticateAdmin, couponController.updateCoupon);
+router.put('/:id', couponController.updateCoupon);
 
 // Delete a coupon by code
-router.delete('/delete/:code', authenticateAdmin, couponController.deleteCoupon);
+router.delete('/:id', couponController.deleteCoupon);
 
 // Validate a coupon by code
-router.get('/validate/:code',authenticateJWT, couponController.validateCoupon);
+router.get('/validate/:code', couponController.validateCoupon);
 
 module.exports = router;

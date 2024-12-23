@@ -1,5 +1,5 @@
 const { getDB } = require('../config/db');
-
+const {ObjectId} =require('mongodb')
 // Create a new coupon
 exports.createCoupon = async (req, res) => {
   try {
@@ -16,8 +16,8 @@ exports.createCoupon = async (req, res) => {
 exports.getAllCoupons = async (req, res) => {
   try {
     const couponsCollection = getDB().collection('coupons');
-    const coupons = await couponsCollection.find({}).toArray(); // Fetch all coupons
-    res.status(200).json({ coupons });
+    const coupons = await couponsCollection.find({status:"publish"}).sort({ createdAt: -1 }).toArray(); // Fetch all coupons
+    res.status(200).json( coupons );
   } catch (error) {
     res.status(400).json({ message: 'Error fetching coupons', error });
   }
@@ -37,38 +37,68 @@ exports.getCouponByCode = async (req, res) => {
     res.status(400).json({ message: 'Error fetching coupon', error });
   }
 };
+exports.getCouponById = async (req, res) => {
+  try {
+    const couponsCollection = getDB().collection('coupons');
+    const { id } = req.params;
 
+    // Convert the id to ObjectId
+    const coupon = await couponsCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    res.status(200).json(coupon);
+  } catch (error) {
+    res.status(400).json({ message: 'Error fetching coupon', error });
+  }
+};
 // Update a coupon by code
 exports.updateCoupon = async (req, res) => {
   try {
     const couponsCollection = getDB().collection('coupons');
-    const { code } = req.params;
-    const updates = req.body; // Fields to update
-    const result = await couponsCollection.updateOne({ code }, { $set: updates });
+    const { id } = req.params; // Get the coupon ID from the URL
+    let updates = { ...req.body }; // Copy req.body to avoid mutating the original data
+
+    // Remove _id from the updates object if it exists
+    delete updates._id;
+
+    // Convert the id into MongoDB ObjectId
+    const result = await couponsCollection.updateOne(
+      { _id: new ObjectId(id) }, // Query the coupon by ObjectId
+      { $set: updates } // Apply the update using $set
+    );
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ message: 'Coupon not found' });
     }
+
     res.status(200).json({ message: 'Coupon updated successfully' });
   } catch (error) {
     res.status(400).json({ message: 'Error updating coupon', error });
   }
 };
 
+
 // Delete a coupon by code
 exports.deleteCoupon = async (req, res) => {
   try {
     const couponsCollection = getDB().collection('coupons');
-    const { code } = req.params;
-    const result = await couponsCollection.deleteOne({ code });
+    const { id } = req.params;
+
+    // Convert the id to ObjectId
+    const result = await couponsCollection.deleteOne({ _id: new ObjectId(id) });
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ message: 'Coupon not found' });
     }
+
     res.status(200).json({ message: 'Coupon deleted successfully' });
   } catch (error) {
     res.status(400).json({ message: 'Error deleting coupon', error });
   }
 };
-
 // Validate a coupon by code (e.g., check expiry or usage limits)
 exports.validateCoupon = async (req, res) => {
   try {

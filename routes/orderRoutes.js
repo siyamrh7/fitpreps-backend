@@ -3,8 +3,10 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
 const authenticateJWT = require('../middleware/authMiddleware');
+const couponMiddleare = require('../middleware/CouponMiddleware');
+const updateCouponOnOrder = require('../middleware/CouponMiddleware');
 
-router.post('/create', orderController.createOrder);
+router.post('/create',updateCouponOnOrder, orderController.createOrder);
 router.get('/checkpayment/:transactionId', orderController.checkPayment);
 router.delete('/orders', orderController.deleteOrders);
 router.put('/status', orderController.updateOrderStatus);

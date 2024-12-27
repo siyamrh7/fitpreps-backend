@@ -6,6 +6,9 @@ const { ObjectId } = require('mongodb'); // Import ObjectId to handle MongoDB ID
 exports.createUser = async (req, res) => {
   try {
     const usersCollection = getDB().collection('users');
+    if(req.body.metadata.woocommerce_reward_points !== "50"){
+      res.status(201).json({ message: 'You are not eligible' });
+    }
     await usersCollection.insertOne(req.body);  // Save the full body as-is
     res.status(201).json({ message: 'User created successfully' });
   } catch (error) {

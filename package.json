@@ -23,6 +23,7 @@
     "mongodb": "^6.11.0",
     "nodemon": "^3.1.7",
     "paynl-sdk": "^1.1.4",
+    "php-serialize": "^5.0.1",
     "wordpress-hash-node": "^1.0.0"
   }
 }

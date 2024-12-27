@@ -2,6 +2,7 @@
 const { getDB } = require('../config/db');
 const { ObjectId } = require('mongodb'); // Import ObjectId to handle MongoDB IDs
 const moment = require('moment'); // Import Moment.js to handle dates
+const { unserialize } = require('php-serialize');
 // Import Pay.nl SDK
 var Paynl = require('paynl-sdk');
 
@@ -20,27 +21,27 @@ exports.createOrder = async (req, res) => {
     const ordersCollection = getDB().collection('orders');
 
     const results = await ordersCollection.insertOne(req.body);
-    if(total == 0 ){
-      await ordersCollection.updateOne(
-        { _id: results.insertedId },
-        {
-          $set: {
-            'metadata.transactionId': null, // Adds or updates the transactionId in metadata
-            status: 'processing',  // Updates status to 'pending' (or awaiting_payment)
-            'metadata._customer_ip_address': req.ip,
-            updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
-          },
-        }
-      );
-      return res.status(200).json({
-        message: 'Order created successfully',
-        paymentUrl:`${process.env.FRONTEND_URI}/profile?tab=1`,
-      
-      });
-    }
+    // if(total == 0 ){
+    //   await ordersCollection.updateOne(
+    //     { _id: results.insertedId },
+    //     {
+    //       $set: {
+    //         'metadata.transactionId': null, // Adds or updates the transactionId in metadata
+    //         status: 'processing',  // Updates status to 'pending' (or awaiting_payment)
+    //         'metadata._customer_ip_address': req.ip,
+    //         updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
+    //       },
+    //     }
+    //   );
+    //   return res.status(200).json({
+    //     message: 'Order created successfully',
+    //     paymentUrl:`${process.env.FRONTEND_URI}/profile?tab=1`,
+
+    //   });
+    // }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
     const paymentData = {
-      amount: total,               // Amount to charge (in Euros)
+      amount: total || 1,               // Amount to charge (in Euros)
       returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect after successful payment
       cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
       ipAddress: req.ip,                 // User's IP address
@@ -48,7 +49,7 @@ exports.createOrder = async (req, res) => {
         emailAddress: req.body.metadata._billing_email,
       },
     };
-   
+
     // Start the payment transaction using Pay.nl SDK
     Paynl.Transaction.start(paymentData)
       .subscribe(
@@ -117,7 +118,7 @@ exports.checkPayment = async (req, res) => {
         shipment: {
           id: orderData.metadata.deliveryMethod
         },
-        weight: orderData.totalWeight || 10.000,
+        weight: orderData.totalWeight || 1.000,
         order_number: orderData._id,
         total_order_value_currency: "EUR",
         total_order_value: orderData.total,
@@ -126,9 +127,9 @@ exports.checkPayment = async (req, res) => {
           return {
             description: item.order_item_name,
             quantity: item.meta?._qty,
-            value: item.meta?._line_total/item.meta?._qty,
+            value: item.meta?._line_total / item.meta?._qty,
             weight: item.meta?._weight,
-            product_id:item.meta?._id,
+            product_id: item.meta?._id,
             item_id: item.meta?._id,
             sku: item.meta?._id
           };
@@ -189,34 +190,181 @@ exports.checkPayment = async (req, res) => {
         );
         if (result.isPaid()) {
           // Update stock levels in the products collection
-
           // const productsCollection = getDB().collection('products');
 
           // // Build bulk operations
-          // const bulkOperations = orderData.items.map((item) => {
+          // const bulkOperations = orderData.items.flatMap((item) => {
           //   const productName = item.order_item_name; // Name of the product
           //   const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
-          
-          //   return {
-          //     updateOne: {
-          //       filter: {
-          //         name: productName,
-          //         $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
-          //       },
-          //       update: [
-          //         {
-          //           $set: {
-          //             "metadata._stock": {
-          //               $toString: { $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Decrement and convert back to string
+
+          //   // Check if the item is a bundle
+          //   if (item.meta._asnp_wepb_items) {
+          //     // Parse `_asnp_wepb_items` to get product IDs and quantities
+          //     const bundleComponents = item.meta._asnp_wepb_items.split(',').map((component) => {
+          //       const [productId, quantity] = component.split(':').map(Number);
+          //       return { productId, quantity: quantity * 1 };
+          //     });
+
+          //     // Create operations for each bundle component
+          //     return bundleComponents.map((component) => ({
+          //       updateOne: {
+          //         filter: {
+          //           productId: component.productId, // Filter by product ID
+          //           $expr: { $gte: [{ $toInt: "$metadata._stock" }, component.quantity] }, // Ensure sufficient stock
+          //         },
+          //         update: [
+          //           {
+          //             $set: {
+          //               "metadata._stock": {
+          //                 $toString: {
+          //                   $subtract: [{ $toInt: "$metadata._stock" }, component.quantity],
+          //                 },
+          //               },
+
           //             },
           //           },
+          //         ],
+          //       },
+          //     }));
+          //   } else {
+          //     // If it's a single product
+          //     return {
+          //       updateOne: {
+          //         filter: {
+          //           name: productName,
+          //           $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
           //         },
-          //       ],
-          //     },
-          //   };
+          //         update: [
+          //           {
+          //             $set: {
+          //               "metadata._stock": {
+          //                 $toString: {
+          //                   $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce],
+          //                 },
+          //               },
+          //             },
+          //           },
+          //         ],
+          //       },
+          //     };
+          //   }
           // });
-          // const result = await productsCollection.bulkWrite(bulkOperations);
-          // console.log(`${result.modifiedCount} products updated successfully.`);
+
+          // const results = await productsCollection.bulkWrite(bulkOperations);
+
+          const productsCollection = getDB().collection('products');
+
+          // Build bulk operations
+          const bulkOperations = orderData.items.flatMap((item) => {
+            const productName = item.order_item_name; // Name of the product
+            const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
+
+            // Check if the item is a bundle
+            if (item.meta._asnp_wepb_items) {
+              // Parse `_asnp_wepb_items` to get product IDs and quantities
+              const bundleComponents = item.meta._asnp_wepb_items.split(',').map((component) => {
+                const [productId, quantity] = component.split(':').map(Number);
+                return { productId, quantity: quantity * 1 };
+              });
+
+              // Create operations for each bundle component
+              return bundleComponents.map((component) => ({
+                updateOne: {
+                  filter: {
+                    productId: component.productId, // Filter by product ID
+                    $expr: { $gte: [{ $toInt: "$metadata._stock" }, component.quantity] }, // Ensure sufficient stock
+                  },
+                  update: [
+                    {
+                      $set: {
+                        "metadata._stock": {
+                          $toString: {
+                            $subtract: [{ $toInt: "$metadata._stock" }, component.quantity],
+                          },
+                        },
+                        "metadata.total_sales": {
+                          $toString: {
+                            $add: [{ $toInt: "$metadata.total_sales" }, component.quantity],
+                          },
+                        },
+
+                      },
+                    },
+                  ],
+                },
+              }));
+            } else if (item.meta._cartstamp) {
+              const cartstamp = Object.values(unserialize(item.meta._cartstamp));
+              // Create operations for each product in the _cartstamp
+              return cartstamp.map((product) => ({
+                updateOne: {
+                  filter: {
+                    productId: parseInt(product.product_id), // Filter by product ID
+                    $expr: { $gte: [{ $toInt: "$metadata._stock" }, parseInt(product.bp_min_qty)] }, // Ensure sufficient stock
+                  },
+                  update: [
+                    {
+                      $set: {
+                        "metadata._stock": {
+                          $toString: {
+                            $subtract: [{ $toInt: "$metadata._stock" }, parseInt(product.bp_min_qty) * quantityToReduce],
+                          },
+                        },
+                        "metadata.total_sales": {
+                          $toString: {
+                            $add: [{ $toInt: "$metadata.total_sales" }, parseInt(product.bp_min_qty) * quantityToReduce],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              }));
+            } else {
+              // If it's a single product
+              return {
+                updateOne: {
+                  filter: {
+                    name: productName,
+                    $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
+                  },
+                  update: [
+                    {
+                      $set: {
+                        "metadata._stock": {
+                          $toString: {
+                            $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce],
+                          },
+                        },
+                        "metadata.total_sales": {
+                          $toString: {
+                            $add: [{ $toInt: "$metadata.total_sales" }, quantityToReduce],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              };
+            }
+          });
+          const usersCollection = getDB().collection('users');
+          const user = await usersCollection.findOne({ _id: new ObjectId(orderData.user_id) });
+
+          // Deduct points from user account
+          const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + Math.ceil(parseInt(orderData.total));
+          await usersCollection.updateOne(
+            { _id: new ObjectId(orderData.user_id) },
+            { $set: { "metadata.woocommerce_reward_points": Math.ceil(updatedPoints).toString() } }
+          );
+          const updatedMoneySpent = (parseFloat(user.metadata._money_spent)|| 0) + parseFloat(orderData.total);
+          await usersCollection.updateOne(
+            { _id: new ObjectId(orderData.user_id) },
+            { $set: { "metadata._money_spent": updatedMoneySpent.toString() } }
+          );
+          const results = await productsCollection.bulkWrite(bulkOperations);
+
+
 
           // Fetch data from SendCloud API
           const response = await fetch(url, options);
@@ -382,10 +530,10 @@ exports.getAllOrders = async (req, res) => {
 
     // Extract query parameters
     const {
-      page = 1, 
-      limit = 20, 
-      status = "", 
-      deliveryDateFilter = "", 
+      page = 1,
+      limit = 20,
+      status = "",
+      deliveryDateFilter = "",
       deliveryDate = "" // Specific delivery date from the date picker
     } = req.query;
 
@@ -400,43 +548,7 @@ exports.getAllOrders = async (req, res) => {
       query.status = status; // Add status filter if provided
     }
 
-    // Handling delivery date filter
-    // if (deliveryDateFilter) {
-    //   const today = moment().startOf('day');
-    //   let filterDateRange;
 
-    //   switch (deliveryDateFilter) {
-    //     case 'today':
-    //       filterDateRange = {
-    //         $gte: today.toDate(),
-    //         $lt: today.add(1, 'day').toDate() // Today range
-    //       };
-    //       break;
-    //     case 'next-day':
-    //       filterDateRange = {
-    //         $gte: today.add(1, 'day').toDate(),
-    //         $lt: today.add(1, 'day').add(1, 'day').toDate() // Next day range
-    //       };
-    //       break;
-    //     case 'next-three-days':
-    //       filterDateRange = {
-    //         $gte: today.add(1, 'day').toDate(),
-    //         $lt: today.add(4, 'days').toDate() // Next 3 days range
-    //       };
-    //       break;
-    //     case 'next-week':
-    //       filterDateRange = {
-    //         $gte: today.add(1, 'day').toDate(),
-    //         $lt: today.add(1, 'week').toDate() // Next week range
-    //       };
-    //       break;
-    //     default:
-    //       filterDateRange = {};
-    //   }
-
-    //   // Update the query to include the date range filter
-    //   query["metadata._delivery_date"] = filterDateRange;
-    // }
     if (deliveryDateFilter) {
       const today = moment().startOf('day');
       let filterDateRange;
@@ -444,7 +556,7 @@ exports.getAllOrders = async (req, res) => {
       switch (deliveryDateFilter) {
         case 'today':
           filterDateRange = {
-            $gte: today.format('YYYY-MM-DD'), 
+            $gte: today.format('YYYY-MM-DD'),
             $lt: today.add(1, 'day').format('YYYY-MM-DD') // Today range
           };
           break;
@@ -478,13 +590,13 @@ exports.getAllOrders = async (req, res) => {
     if (deliveryDate) {
       const specificDate = moment(deliveryDate, 'YYYY-MM-DD').startOf('day');
       const nextDay = specificDate.clone().add(1, 'day');
-  
+
       // Update query to filter by specific delivery date
       query["metadata._delivery_date"] = {
-          $gte: specificDate.toISOString(), // Start of the day
-          $lt: nextDay.toISOString() // End of the day
+        $gte: specificDate.toISOString(), // Start of the day
+        $lt: nextDay.toISOString() // End of the day
       };
-  }
+    }
 
     // Fetch total count of orders matching the query
     const totalOrders = await ordersCollection.countDocuments(query);
@@ -638,24 +750,374 @@ exports.updateOrderStatus = async (req, res) => {
 };
 
 // Function to get total sales, total taxes, etc.
+// exports.getAnalytics = async (req, res) => {
+//   try {
+//     const ordersCollection = getDB().collection('orders');
+
+//     // Aggregation for Total Sales
+//     const totalSales = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalSales: {
+//             $sum: { $toDouble: "$total" }
+//           }
+//         }
+//       }
+//     ]).toArray();
+
+//     // Aggregation for Total Taxes
+//     const totalTaxes = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalTaxes: {
+//             $sum: {
+//               $add: [
+//                 { $toDouble: "$metadata._order_tax" },
+//                 { $toDouble: "$metadata._order_shipping_tax" }
+//               ]
+//             }
+//           }
+//         }
+//       }
+//     ]).toArray();
+
+//     // Aggregation for Total Product Taxes
+//     const totalProductTaxes = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalProductTaxes: {
+//             $sum: { $toDouble: "$metadata._order_tax" }
+//           }
+//         }
+//       }
+//     ]).toArray();
+
+//     // Aggregation for Total Shipping Taxes
+//     const totalShippingTaxes = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalShippingTaxes: {
+//             $sum: { $toDouble: "$metadata._order_shipping_tax" }
+//           }
+//         }
+//       }
+//     ]).toArray();
+
+//     // Aggregation for Total Discounts
+//     const totalDiscounts = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalDiscounts: {
+//             $sum: { $toDouble: "$metadata._cart_discount" }
+//           }
+//         }
+//       }
+//     ]).toArray();
+
+//     // Aggregation for Total Users
+//     const usersCollection = getDB().collection('users');
+//     const totalUsers = await usersCollection.countDocuments();
+
+//     // Aggregation for Total Orders
+//     const totalOrders = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       { $count: "totalOrders" }
+//     ]).toArray();
+
+//     // Aggregation for Processing Orders
+//     const processingOrders = await ordersCollection.aggregate([
+//       { $match: { status: 'processing' } },
+//       { $count: "processingOrders" }
+//     ]).toArray();
+
+//     // Prepare the analytics response object
+//     const analytics = {
+//       totalSales: totalSales[0]?.totalSales || 0,
+//       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
+//       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
+//       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
+//       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
+//       totalUsers: totalUsers,
+//       totalOrders: totalOrders[0]?.totalOrders || 0,
+//       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
+//     };
+
+//     // Send the analytics response
+//     res.status(200).json(analytics);
+
+//   } catch (error) {
+//     res.status(400).json({ message: 'Error fetching analytics', error });
+//   }
+// };
+
+
+// exports.getAnalytics = async (req, res) => {
+//   try {
+//     const ordersCollection = getDB().collection('orders');
+
+//     // Helper function to calculate date ranges
+//     const getDateRange = (days) => {
+//       const end = new Date();
+//       const start = new Date();
+//       start.setDate(end.getDate() - days);
+//       return { start, end };
+//     };
+
+//     // Aggregation function for sales and orders
+//     const aggregateMetrics = async (start, end) => {
+//       const metrics = await ordersCollection.aggregate([
+//         { $match: { status: 'completed', createdAt: { $gte: start, $lte: end } } },
+//         {
+//           $group: {
+//             _id: null,
+//             totalSales: { $sum: { $toDouble: "$total" } },
+//             totalOrders: { $sum: 1 },
+//             totalTaxes: {
+//               $sum: {
+//                 $add: [
+//                   { $toDouble: "$metadata._order_tax" },
+//                   { $toDouble: "$metadata._order_shipping_tax" }
+//                 ]
+//               }
+//             },
+//             totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
+//             totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
+//             totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
+//           },
+//         },
+//       ]).toArray();
+//       const processingOrders = await ordersCollection.countDocuments({ status: 'processing', createdAt: { $gte: start, $lte: end } });
+//       const cancelledOrders = await ordersCollection.countDocuments({ status: 'cancelled', createdAt: { $gte: start, $lte: end } });
+
+//       return {
+//         totalSales: metrics[0]?.totalSales || 0,
+//         totalOrders: metrics[0]?.totalOrders || 0,
+//         totalTaxes: metrics[0]?.totalTaxes || 0,
+//         totalProductTaxes: metrics[0]?.totalProductTaxes || 0,
+//         totalShippingTaxes: metrics[0]?.totalShippingTaxes || 0,
+//         totalDiscounts: metrics[0]?.totalDiscounts || 0,
+//         processingOrders: processingOrders || 0,
+//         cancelledOrders: cancelledOrders || 0,
+//       };
+//     };
+
+//     // Fetching global analytics data
+//     const totalSales = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalSales: { $sum: { $toDouble: "$total" } },
+//         },
+//       },
+//     ]).toArray();
+
+//     const totalTaxes = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalTaxes: {
+//             $sum: {
+//               $add: [
+//                 { $toDouble: "$metadata._order_tax" },
+//                 { $toDouble: "$metadata._order_shipping_tax" }
+//               ],
+//             },
+//           },
+//         },
+//       },
+//     ]).toArray();
+
+//     const totalDiscounts = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
+//         },
+//       },
+//     ]).toArray();
+
+//     const totalProductTaxes = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
+//         },
+//       },
+//     ]).toArray();
+
+//     const totalShippingTaxes = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       {
+//         $group: {
+//           _id: null,
+//           totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
+//         },
+//       },
+//     ]).toArray();
+//     // Aggregation for Total Orders
+//     const totalOrders = await ordersCollection.aggregate([
+//       { $match: { status: 'completed' } },
+//       { $count: "totalOrders" }
+//     ]).toArray();
+
+//     // Aggregation for Processing Orders
+//     const processingOrders = await ordersCollection.aggregate([
+//       { $match: { status: 'processing' } },
+//       { $count: "processingOrders" }
+//     ]).toArray();
+//     const usersCollection = getDB().collection('users');
+//     const totalUsers = await usersCollection.countDocuments();
+
+//     // Date ranges for monthly, weekly, and today
+//     const { start: startOfMonth, end: endOfMonth } = getDateRange(30);
+//     const { start: startOfWeek, end: endOfWeek } = getDateRange(7);
+//     const { start: startOfToday, end: endOfToday } = getDateRange(1);
+
+//     const monthlyData = await aggregateMetrics(startOfMonth, endOfMonth);
+//     const weeklyData = await aggregateMetrics(startOfWeek, endOfWeek);
+//     const todayData = await aggregateMetrics(startOfToday, endOfToday);
+
+//     // Prepare the analytics response object
+//     const analytics = {
+//       totalSales: totalSales[0]?.totalSales || 0,
+//       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
+//       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
+//       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
+//       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
+//       totalOrders: totalOrders[0]?.totalOrders || 0,
+//       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
+//       totalUsers,
+//       monthly: {
+//         totalSales: monthlyData.totalSales,
+//         completedOrders: monthlyData.totalOrders,
+//         totalTaxes: monthlyData.totalTaxes,
+//         totalProductTaxes: monthlyData.totalProductTaxes,
+//         totalShippingTaxes: monthlyData.totalShippingTaxes,
+//         totalDiscounts: monthlyData.totalDiscounts,
+//         processingOrders: monthlyData.processingOrders,
+//         cancelledOrders: monthlyData.cancelledOrders
+//       },
+//       weekly: {
+//         totalSales: weeklyData.totalSales,
+//         completedOrders: weeklyData.totalOrders,
+//         totalTaxes: weeklyData.totalTaxes,
+//         totalProductTaxes: weeklyData.totalProductTaxes,
+//         totalShippingTaxes: weeklyData.totalShippingTaxes,
+//         totalDiscounts: weeklyData.totalDiscounts,
+//         processingOrders: weeklyData.processingOrders,
+//         cancelledOrders: weeklyData.cancelledOrders
+//       },
+//       today: {
+//         totalSales: todayData.totalSales,
+//         completedOrders: todayData.totalOrders,
+//         totalTaxes: todayData.totalTaxes,
+//         totalProductTaxes: todayData.totalProductTaxes,
+//         totalShippingTaxes: todayData.totalShippingTaxes,
+//         totalDiscounts: todayData.totalDiscounts,
+//         processingOrders: todayData.processingOrders,
+//         cancelledOrders: todayData.cancelledOrders  
+//       },
+//     };
+
+//     // Send the analytics response
+//     res.status(200).json(analytics);
+//   } catch (error) {
+//     res.status(400).json({ message: 'Error fetching analytics', error });
+//   }
+// };
+
 exports.getAnalytics = async (req, res) => {
   try {
     const ordersCollection = getDB().collection('orders');
 
-    // Aggregation for Total Sales
+    // Helper function to calculate date ranges
+    const getDateRange = (days) => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - days);
+      return { start, end };
+    };
+
+    // Aggregation function for sales and orders
+    const aggregateMetrics = async (start, end) => {
+      const metrics = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
+          },
+        },
+        {
+          $match: {
+            status: 'completed',
+            createdAtDate: { $gte: start, $lte: end }, // Compare the converted Date field
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSales: { $sum: { $toDouble: "$total" } },
+            totalOrders: { $sum: 1 },
+            totalTaxes: {
+              $sum: {
+                $add: [
+                  { $toDouble: "$metadata._order_tax" },
+                  { $toDouble: "$metadata._order_shipping_tax" },
+                ],
+              },
+            },
+            totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
+            totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
+            totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
+          },
+        },
+      ]).toArray();
+
+      const processingOrders = await ordersCollection.countDocuments({
+        status: 'processing',
+        createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
+      });
+
+      const cancelledOrders = await ordersCollection.countDocuments({
+        status: 'cancelled',
+        createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
+      });
+      return {
+        totalSales: metrics[0]?.totalSales || 0,
+        totalOrders: metrics[0]?.totalOrders || 0,
+        totalTaxes: metrics[0]?.totalTaxes || 0,
+        totalProductTaxes: metrics[0]?.totalProductTaxes || 0,
+        totalShippingTaxes: metrics[0]?.totalShippingTaxes || 0,
+        totalDiscounts: metrics[0]?.totalDiscounts || 0,
+        processingOrders: processingOrders || 0,
+        cancelledOrders: cancelledOrders || 0,
+      };
+    };
+
+    // Fetching global analytics data
     const totalSales = await ordersCollection.aggregate([
       { $match: { status: 'completed' } },
       {
         $group: {
           _id: null,
-          totalSales: {
-            $sum: { $toDouble: "$total" }
-          }
-        }
-      }
+          totalSales: { $sum: { $toDouble: "$total" } },
+        },
+      },
     ]).toArray();
 
-    // Aggregation for Total Taxes
     const totalTaxes = await ordersCollection.aggregate([
       { $match: { status: 'completed' } },
       {
@@ -665,91 +1127,116 @@ exports.getAnalytics = async (req, res) => {
             $sum: {
               $add: [
                 { $toDouble: "$metadata._order_tax" },
-                { $toDouble: "$metadata._order_shipping_tax" }
-              ]
-            }
-          }
-        }
-      }
+                { $toDouble: "$metadata._order_shipping_tax" },
+              ],
+            },
+          },
+        },
+      },
     ]).toArray();
 
-    // Aggregation for Total Product Taxes
-    const totalProductTaxes = await ordersCollection.aggregate([
-      { $match: { status: 'completed' } },
-      {
-        $group: {
-          _id: null,
-          totalProductTaxes: {
-            $sum: { $toDouble: "$metadata._order_tax" }
-          }
-        }
-      }
-    ]).toArray();
-
-    // Aggregation for Total Shipping Taxes
-    const totalShippingTaxes = await ordersCollection.aggregate([
-      { $match: { status: 'completed' } },
-      {
-        $group: {
-          _id: null,
-          totalShippingTaxes: {
-            $sum: { $toDouble: "$metadata._order_shipping_tax" }
-          }
-        }
-      }
-    ]).toArray();
-
-    // Aggregation for Total Discounts
     const totalDiscounts = await ordersCollection.aggregate([
       { $match: { status: 'completed' } },
       {
         $group: {
           _id: null,
-          totalDiscounts: {
-            $sum: { $toDouble: "$metadata._cart_discount" }
-          }
-        }
-      }
+          totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
+        },
+      },
     ]).toArray();
 
-    // Aggregation for Total Users
-    const usersCollection = getDB().collection('users');
-    const totalUsers = await usersCollection.countDocuments();
+    const totalProductTaxes = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
+        },
+      },
+    ]).toArray();
+
+    const totalShippingTaxes = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
+        },
+      },
+    ]).toArray();
 
     // Aggregation for Total Orders
     const totalOrders = await ordersCollection.aggregate([
       { $match: { status: 'completed' } },
-      { $count: "totalOrders" }
+      { $count: "totalOrders" },
     ]).toArray();
 
     // Aggregation for Processing Orders
     const processingOrders = await ordersCollection.aggregate([
       { $match: { status: 'processing' } },
-      { $count: "processingOrders" }
+      { $count: "processingOrders" },
     ]).toArray();
+
+    const usersCollection = getDB().collection('users');
+    const totalUsers = await usersCollection.countDocuments();
+
+    // Date ranges for monthly, weekly, and today
+    const { start: startOfMonth, end: endOfMonth } = getDateRange(30);
+    const { start: startOfWeek, end: endOfWeek } = getDateRange(7);
+    const { start: startOfToday, end: endOfToday } = getDateRange(1);
+
+    const monthlyData = await aggregateMetrics(startOfMonth, endOfMonth);
+    const weeklyData = await aggregateMetrics(startOfWeek, endOfWeek);
+    const todayData = await aggregateMetrics(startOfToday, endOfToday);
 
     // Prepare the analytics response object
     const analytics = {
       totalSales: totalSales[0]?.totalSales || 0,
       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
+      totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
-      totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
-      totalUsers: totalUsers,
       totalOrders: totalOrders[0]?.totalOrders || 0,
       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
+      totalUsers,
+      monthly: {
+        totalSales: monthlyData.totalSales,
+        completedOrders: monthlyData.totalOrders,
+        totalTaxes: monthlyData.totalTaxes,
+        totalProductTaxes: monthlyData.totalProductTaxes,
+        totalShippingTaxes: monthlyData.totalShippingTaxes,
+        totalDiscounts: monthlyData.totalDiscounts,
+        processingOrders: monthlyData.processingOrders,
+        cancelledOrders: monthlyData.cancelledOrders,
+      },
+      weekly: {
+        totalSales: weeklyData.totalSales,
+        completedOrders: weeklyData.totalOrders,
+        totalTaxes: weeklyData.totalTaxes,
+        totalProductTaxes: weeklyData.totalProductTaxes,
+        totalShippingTaxes: weeklyData.totalShippingTaxes,
+        totalDiscounts: weeklyData.totalDiscounts,
+        processingOrders: weeklyData.processingOrders,
+        cancelledOrders: weeklyData.cancelledOrders,
+      },
+      today: {
+        totalSales: todayData.totalSales,
+        completedOrders: todayData.totalOrders,
+        totalTaxes: todayData.totalTaxes,
+        totalProductTaxes: todayData.totalProductTaxes,
+        totalShippingTaxes: todayData.totalShippingTaxes,
+        totalDiscounts: todayData.totalDiscounts,
+        processingOrders: todayData.processingOrders,
+        cancelledOrders: todayData.cancelledOrders,
+      },
     };
 
     // Send the analytics response
     res.status(200).json(analytics);
-
   } catch (error) {
     res.status(400).json({ message: 'Error fetching analytics', error });
   }
 };
-
-
-
 
 
 exports.getShippingMethods = async (req, res) => {

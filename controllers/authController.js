@@ -24,7 +24,7 @@ exports.register = async (req, res) => {
     // const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create a new user
-    const user = { email, password: hashedPassword ,metadata:{first_name:metadata.first_name,last_name:metadata.last_name}};
+    const user = { email,registeredAt: new Date().toISOString(), password: hashedPassword ,metadata:{first_name:metadata.first_name,last_name:metadata.last_name,woocommerce_reward_points:"50"} };
 
     // Insert the user into the database
     await usersCollection.insertOne(user);

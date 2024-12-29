@@ -1051,7 +1051,145 @@ exports.getAnalytics = async (req, res) => {
       start.setDate(end.getDate() - days);
       return { start, end };
     };
+    const aggregateMonthlyOrders = async () => {
+      const result = await ordersCollection.aggregate([
+        {
+          $match: { status: 'completed' },
+        },
+        {
+          $project: {
+            createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
+            year: { $year: { $dateFromString: { dateString: "$createdAt" } } }, // Extract year
+            month: { $month: { $dateFromString: { dateString: "$createdAt" } } }, // Extract month
+          },
+        },
+        {
+          $group: {
+            _id: { year: "$year", month: "$month" },
+            totalOrders: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { "_id.year": 1, "_id.month": 1 }, // Sort by year and month
+        },
+      ]).toArray();
+      // Map the result to return it as { month: orderCount }
+      const monthlyOrders = Array(12).fill(0); // Initialize array with 12 months
 
+      result.forEach(item => {
+        const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
+        monthlyOrders[monthIndex] = item.totalOrders;
+      });
+
+      return monthlyOrders;
+    };
+    const aggregateDailyOrders = async () => {
+      // Get the current date
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1; // JavaScript months are 0-based
+    
+      const result = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
+          },
+        },
+        {
+          $match: { 
+            status: 'completed', // Match only completed orders
+            createdAtDate: { 
+              $gte: new Date(currentYear, currentMonth - 1, 1), // First day of the current month
+              $lt: new Date(currentYear, currentMonth, 1), // First day of the next month
+            }
+          },
+        },
+        {
+          $project: {
+            day: { $dayOfMonth: "$createdAtDate" }, // Extract day of the month
+          },
+        },
+        {
+          $group: {
+            _id: { day: "$day" }, // Group by day of the month
+            totalOrders: { $sum: 1 }, // Count the total number of orders for each day
+          },
+        },
+        {
+          $sort: { "_id.day": 1 }, // Sort by day of the month
+        },
+      ]).toArray();
+    
+      // Initialize an array for the current month with zeros
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate(); // Number of days in the current month
+      const dailyOrders = Array(daysInMonth).fill(0);
+    
+      // Populate the dailyOrders array with data from the result
+      result.forEach(item => {
+        const dayIndex = item._id.day - 1; // MongoDB day is 1-based, array is 0-based
+        dailyOrders[dayIndex] = item.totalOrders;
+      });
+    
+      return dailyOrders;
+    };
+    const aggregateLast24HoursOrders = async () => {
+      // Get the current date and calculate the start time for the last 24 hours
+      const now = new Date();
+      const startTime = new Date(now);
+      startTime.setHours(now.getHours() - 24); // 24 hours ago
+    
+      const result = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
+          },
+        },
+        {
+          $match: {
+            createdAtDate: {
+              $gte: startTime, // Start time of the last 24 hours
+              $lt: now, // Current time (exclusive)
+            },
+          },
+        },
+        {
+          $project: {
+            hour: { $hour: "$createdAtDate" }, // Extract the hour
+            day: { $dayOfYear: "$createdAtDate" }, // Extract the day of the year (to differentiate hours spanning two days)
+            year: { $year: "$createdAtDate" }, // Extract the year
+          },
+        },
+        {
+          $group: {
+            _id: { year: "$year", day: "$day", hour: "$hour" }, // Group by year, day, and hour
+            totalOrders: { $sum: 1 }, // Count the total number of orders for each hour
+          },
+        },
+        {
+          $sort: { "_id.year": 1, "_id.day": 1, "_id.hour": 1 }, // Sort by year, day, and hour
+        },
+      ]).toArray();
+    
+      // Prepare the last 24 hours array
+      const hourlyOrders = Array(24).fill(0);
+    
+      // Populate the hourlyOrders array with data from the result
+      result.forEach(item => {
+        const orderDate = new Date(item._id.year, 0); // Start of the year
+        orderDate.setDate(item._id.day); // Add the day of the year
+        orderDate.setHours(item._id.hour); // Add the hour
+    
+        const diffInHours = Math.floor((now - orderDate) / (1000 * 60 * 60)); // Difference in hours from now
+    
+        if (diffInHours >= 0 && diffInHours < 24) {
+          const hourIndex = 23 - diffInHours; // Map to the last 24 hours
+          hourlyOrders[hourIndex] = item.totalOrders;
+        }
+      });
+    
+      return hourlyOrders;
+    };
+    
     // Aggregation function for sales and orders
     const aggregateMetrics = async (start, end) => {
       const metrics = await ordersCollection.aggregate([
@@ -1188,7 +1326,9 @@ exports.getAnalytics = async (req, res) => {
     const monthlyData = await aggregateMetrics(startOfMonth, endOfMonth);
     const weeklyData = await aggregateMetrics(startOfWeek, endOfWeek);
     const todayData = await aggregateMetrics(startOfToday, endOfToday);
-
+    const monthlyOrders = await aggregateMonthlyOrders();
+    const dailyOrders = await aggregateDailyOrders();
+    const hourlyOrders = await aggregateLast24HoursOrders();
     // Prepare the analytics response object
     const analytics = {
       totalSales: totalSales[0]?.totalSales || 0,
@@ -1199,6 +1339,9 @@ exports.getAnalytics = async (req, res) => {
       totalOrders: totalOrders[0]?.totalOrders || 0,
       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
       totalUsers,
+      monthlyOrders,
+      dailyOrders,
+      hourlyOrders,
       monthly: {
         totalSales: monthlyData.totalSales,
         completedOrders: monthlyData.totalOrders,

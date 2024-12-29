@@ -17,14 +17,33 @@ exports.createUser = async (req, res) => {
 };
 
 exports.getAllUsers = async (req, res) => {
+  const usersCollection = getDB().collection('users');
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = 25; // You can adjust this number as needed
+  const skip = (page - 1) * limit;
+
   try {
-    const usersCollection = getDB().collection('users');
-    const users = await usersCollection.find().limit(20).toArray();
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(400).json({ message: 'Error fetching users', error });
+    // Fetching users with pagination
+    const customers = await usersCollection.find()
+      .skip(skip)
+      .limit(limit)
+      .toArray(); // Convert the cursor to an array
+
+    // Count the total number of users for pagination
+    const totalCount = await usersCollection.countDocuments();
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.json({
+      customers,
+      totalPages,
+    });
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 exports.getUser = async (req, res) => {
   try {

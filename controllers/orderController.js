@@ -350,18 +350,19 @@ exports.checkPayment = async (req, res) => {
           });
           const usersCollection = getDB().collection('users');
           const user = await usersCollection.findOne({ _id: new ObjectId(orderData.user_id) });
-
-          // Deduct points from user account
-          const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + Math.ceil(parseInt(orderData.total));
-          await usersCollection.updateOne(
-            { _id: new ObjectId(orderData.user_id) },
-            { $set: { "metadata.woocommerce_reward_points": Math.ceil(updatedPoints).toString() } }
-          );
-          const updatedMoneySpent = (parseFloat(user.metadata._money_spent)|| 0) + parseFloat(orderData.total);
-          await usersCollection.updateOne(
-            { _id: new ObjectId(orderData.user_id) },
-            { $set: { "metadata._money_spent": updatedMoneySpent.toString() } }
-          );
+          if(user){
+            // Deduct points from user account
+            const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + Math.ceil(parseInt(orderData.total));
+            await usersCollection.updateOne(
+              { _id: new ObjectId(orderData.user_id) },
+              { $set: { "metadata.woocommerce_reward_points": Math.ceil(updatedPoints).toString() } }
+            );
+            const updatedMoneySpent = (parseFloat(user.metadata._money_spent)|| 0) + parseFloat(orderData.total);
+            await usersCollection.updateOne(
+              { _id: new ObjectId(orderData.user_id) },
+              { $set: { "metadata._money_spent": updatedMoneySpent.toString() } }
+            );
+          }
           const results = await productsCollection.bulkWrite(bulkOperations);
 
 

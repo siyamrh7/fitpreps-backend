@@ -58,9 +58,71 @@ exports.login = async (req, res) => {
     }
 
     // Generate a JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({ message: 'Login successful', token ,user});
+  } catch (error) {
+    res.status(500).json({ message: 'Error logging in', error });
+  }
+};
+exports.adminlogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Get the MongoDB collection
+    const usersCollection = getDB().collection('users');
+
+    // Check if the user exists
+    const user = await usersCollection.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        "error": {
+          "code": 400,
+          "message": "EMAIL_NOT_FOUND",
+          "errors": [
+            {
+              "message": "EMAIL_NOT_FOUND",
+              "domain": "global",
+              "reason": "invalid"
+            }
+          ]
+        }
+      });
+    }
+
+    // Compare the provided password with the hashed password
+    var isMatch = hasher.CheckPassword(password, user.password); //This will return true;
+
+    // const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        "error": {
+          "code": 400,
+          "message": "INVALID_PASSWORD",
+          "errors": [
+            {
+              "message": "INVALID_PASSWORD",
+              "domain": "global",
+              "reason": "invalid"
+            }
+          ]
+        }
+      });
+    }
+
+    // Generate a JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    res.status(200).json({ 
+      "kind": "identitytoolkit#VerifyPasswordResponse",
+      "localId": "qmt6dRyipIad8UCc0QpMV2MENSy1",
+      "email": user.email,
+      "displayName": user.metadata.first_name,
+      "idToken": token,
+      "registered": true,
+      "refreshToken": "AMf-vBxg9g79mKx6dQ-Y79lKuEbE4F5DwJ0y3w7Cs9Cjbm6B3WuNXQoDFVSpaq-yfWOAPJTEx5ijr2nCUgTDtxuCtU5BZJzfOoza-B8OREwGLnfiS-wFSUUUWkSpNO4NmkaI_6BbAynfc-pBqhL1UQNA8fdZJAmFhCRjzks7hks_t40NVdPc7vG1bZjG2NPLDjyn0bOm4y8qebTqJTBM3CpFZA7tTxK4Gw",
+      "expiresIn": "86400"
+  });
   } catch (error) {
     res.status(500).json({ message: 'Error logging in', error });
   }

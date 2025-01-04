@@ -3,19 +3,20 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
 const authenticateJWT = require('../middleware/authMiddleware');
-const updateCouponOnOrder = require('../middleware/couponMiddleware');
-
-router.post('/create',updateCouponOnOrder, orderController.createOrder);
+const authenticateAdmin = require('../middleware/authAdminMiddleware');
+router.post('/create', orderController.createOrder);
 router.get('/checkpayment/:transactionId', orderController.checkPayment);
-router.delete('/orders', orderController.deleteOrders);
-router.put('/status', orderController.updateOrderStatus);
+router.delete('/orders',authenticateAdmin, orderController.deleteOrders);
+router.put('/status',authenticateAdmin, orderController.updateOrderStatus);
 
-router.get('/',  orderController.getAllOrders);
-router.get('/order/:id',  orderController.getOrderById);
+router.get('/',authenticateAdmin,  orderController.getAllOrders);
+router.get('/order/:id',authenticateAdmin,  orderController.getOrderById);
 
 router.get('/order', authenticateJWT, orderController.getOrder);
-router.get('/analytics',  orderController.getAnalytics);
+router.get('/analytics',authenticateAdmin,  orderController.getAnalytics);
 router.get('/getshipping', orderController.getShippingMethods);
+
+
 const BASE_URL = 'http://addressapi.nl/wp-json/postcode-information/v1/info';
 
 // Proxy route

@@ -88,16 +88,56 @@ exports.updateProduct = async (req, res) => {
 };
 
 
+// exports.getAllProducts = async (req, res) => {
+//   try {
+//     const productsCollection = getDB().collection('products');
+
+//     const products = await productsCollection.find({ status: "publish" }).toArray();
+//     res.status(200).json(products);
+//   } catch (error) {
+//     res.status(400).json({ message: 'Error fetching products', error });
+//   }
+// };
 exports.getAllProducts = async (req, res) => {
   try {
     const productsCollection = getDB().collection('products');
 
-    const products = await productsCollection.find({ status: "publish" }).toArray();
+    // Retrieve the category filter from the request query
+    const category = req.query.category;
+
+    // Define the filter
+    const filter = category && category !== 'All' 
+      ? { status: "publish", categories: category } 
+      : { status: "publish" };
+
+    // Define the projection to return only the required fields
+    const projection = {
+      name: 1,
+      description: 1,
+      productId: 1,
+      status: 1,
+      categories: 1,
+      thumbnail: 1,
+      metadata: {
+        _price: 1,
+        _stock: 1,
+        total_sales: 1,
+        nutretions_data: 1,
+        producten_specificaties_data: 1,
+        voedingswaarde_data: 1,
+        _yith_wcpb_bundle_data: 1,
+      },
+    };
+
+    // Fetch products with filter and projection
+    const products = await productsCollection.find(filter, { projection }).toArray();
+
     res.status(200).json(products);
   } catch (error) {
     res.status(400).json({ message: 'Error fetching products', error });
   }
 };
+
 
 exports.getSingleProduct = async (req, res) => {
   try {

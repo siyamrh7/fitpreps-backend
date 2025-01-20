@@ -5,7 +5,7 @@ const moment = require('moment'); // Import Moment.js to handle dates
 const { unserialize } = require('php-serialize');
 // Import Pay.nl SDK
 var Paynl = require('paynl-sdk');
-const { orderEmailController } = require('./contactController');
+const emailQueue = require('./emailQueue');
 
 // Configure Pay.nl with your credentials
 Paynl.Config.setApiToken(process.env.PAY_NL_API_TOKEN);   // Replace with your API token
@@ -160,10 +160,25 @@ exports.checkPayment = async (req, res) => {
           paymentStatus = 'processing';
           // Fetch data from SendCloud API
           // const response = await fetch(url, options);
-          setImmediate(() =>
-            orderEmailController(orderData,"bedankt voor je bestelling!","We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.")
+          setImmediate(async () =>{
+
+            await emailQueue.add(
+              { orderData, title: "bedankt voor je bestelling!", description: "We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.",  emailType: "order" },
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            )
+            await emailQueue.add(
+              { orderData, title: `${orderData.metadata._billing_first_name} placed a new order #${orderData._id} on your store`, description: `${orderData.metadata._billing_first_name} placed a new order`,  emailType: "orderOwner" },
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            )
+          }
           );
-         
+
           // // Handle response
           // if (!response.ok) {
           //   // Log and handle HTTP errors
@@ -173,18 +188,41 @@ exports.checkPayment = async (req, res) => {
           // await response.json();
         } else if (result.isCanceled()) {
           paymentStatus = 'cancelled';
-          setImmediate(() =>
-            orderEmailController(orderData,"Order Failed! Payment is cancelled!","Your order is failed due to your payment cancellation. Here is your order summary! Please try again.")
+          setImmediate(async() =>{
+
+            await emailQueue.add(
+              { orderData, title: "Order Failed! Payment is cancelled!", description: "Your order is failed due to your payment cancellation. Here is your order summary! Please try again.",  emailType: "order" },  
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            ),
+            await emailQueue.add(
+              { orderData, title: `${orderData.metadata._billing_first_name} has cancelled order #${orderData._id} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`,  emailType: "orderOwner" },
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            )
+
+          }
           );
           console.log('Transaction is canceled');
         } else if (result.isBeingVerified()) {
           paymentStatus = 'on-hold';
-          setImmediate(() =>
-            orderEmailController(orderData,"You payment in on hold!","Your order is failed due to your payment. Here is your order summary! Please try again.")
+          setImmediate(async() =>
+            // orderEmailController(orderData, "You payment in on hold!", "Your order is failed due to your payment. Here is your order summary! Please try again.")
+            await emailQueue.add(
+              { orderData, title: "You payment in on hold!", description: "Your order is failed due to your payment. Here is your order summary! Please try again.",  emailType: "order" },  
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            )
           );
           console.log('Transaction is being verified');
         }
-   
+
         // Get payment method name if available
         paymentMethod = result.paymentDetails?.paymentProfileName || 'UNKNOWN';
 
@@ -199,7 +237,6 @@ exports.checkPayment = async (req, res) => {
           }
         );
         if (result.isPaid()) {
-
 
           const productsCollection = getDB().collection('products');
 
@@ -299,17 +336,17 @@ exports.checkPayment = async (req, res) => {
           });
           const usersCollection = getDB().collection('users');
           const user = await usersCollection.findOne({ _id: new ObjectId(orderData.user_id) });
-          if(user){
+          if (user) {
             // Add points to user account
-            
-            const updatedMoneySpent = (parseFloat(user.metadata._money_spent)|| 0) + parseFloat(orderData.total);
+
+            const updatedMoneySpent = (parseFloat(user.metadata._money_spent) || 0) + parseFloat(orderData.total);
             await usersCollection.updateOne(
               { _id: new ObjectId(orderData.user_id) },
               { $set: { "metadata._money_spent": updatedMoneySpent.toString() } }
             );
           }
           //update coupons and redeem points
-          const { discountsData} = orderData.metadata; // Assuming couponCode and userId are sent in the request body
+          const { discountsData } = orderData.metadata; // Assuming couponCode and userId are sent in the request body
           const couponCode = discountsData?.code;
           const redeemPoints = discountsData?.redeemPoints;
           if (couponCode) {
@@ -319,42 +356,42 @@ exports.checkPayment = async (req, res) => {
               // Update coupon usage count
               const updatedUsageCount = (parseInt(coupon.usageCount) || 0) + 1;
               await couponsCollection.updateOne(
-                { _id:new ObjectId(coupon._id) },
+                { _id: new ObjectId(coupon._id) },
                 { $set: { usageCount: updatedUsageCount } }
               );
               //update coupon totalDiscounts
-              var updatedTotalDiscounts = parseFloat(coupon.totalDiscount) + (parseFloat(orderData.metadata._cart_discount) || 0) ;
-             
+              var updatedTotalDiscounts = parseFloat(coupon.totalDiscount) + (parseFloat(orderData.metadata._cart_discount) || 0);
+
               await couponsCollection.updateOne(
-                { _id:new ObjectId(coupon._id) },
+                { _id: new ObjectId(coupon._id) },
                 { $set: { totalDiscount: parseFloat(updatedTotalDiscounts).toFixed(2) } }
               );
               //update coupons users
               await couponsCollection.updateOne(
                 { _id: new ObjectId(coupon._id) }, // Find the coupon by ID
-                { 
-                  $push: { 
-                    usageLogs: { 
+                {
+                  $push: {
+                    usageLogs: {
                       orderId: orderData._id, // Get the orderId from the request body
                       customerId: orderData.user_id,   // Use the userId from the authenticated user
                       discountAmount: orderData.metadata._cart_discount, // Amount from the coupon
                       usageDate: new Date()     // Current date and time
                     }
-                  } 
+                  }
                 }
               );
-             
+
             }
           }
-          if(user){
-               // Deduct points from user account
-               const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + parseInt(orderData.total) - redeemPoints;
-               await usersCollection.updateOne(
-                 { _id: new ObjectId(orderData.user_id) },
-                 { $set: { "metadata.woocommerce_reward_points": parseInt(updatedPoints).toString() } }
-               );
-           
-           
+          if (user) {
+            // Deduct points from user account
+            const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + parseInt(orderData.total) - redeemPoints;
+            await usersCollection.updateOne(
+              { _id: new ObjectId(orderData.user_id) },
+              { $set: { "metadata.woocommerce_reward_points": parseInt(updatedPoints).toString() } }
+            );
+
+
           }
           //update stock action
           const results = await productsCollection.bulkWrite(bulkOperations);
@@ -379,6 +416,7 @@ exports.checkPayment = async (req, res) => {
           status: paymentStatus,
           result,
           paymentMethod: paymentMethod,
+          orderData
         });
       },
       (error) => {
@@ -770,25 +808,25 @@ exports.getAnalytics = async (req, res) => {
           $sort: { "_id.year": 1, "_id.month": 1 }, // Sort by year and month
         },
       ]).toArray();
-    
+
       // Map the result to return it as an array of totals for each month
       const monthlyOrders = Array(12).fill(0); // Initialize array with 12 months
-    
+
       result.forEach(item => {
         const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
         monthlyOrders[monthIndex] = item.totalOrders;
       });
-    
+
       return monthlyOrders;
     };
-    
-    
-   
+
+
+
     const aggregateDailyOrders = async () => {
       const today = new Date();
       const thirtyDaysAgo = new Date(today);
       thirtyDaysAgo.setDate(today.getDate() - 30); // Calculate the date for 30 days ago
-    
+
       // Generate an array of dates for the last 30 days
       const last30Days = [];
       for (let i = 0; i < 30; i++) {
@@ -796,7 +834,7 @@ exports.getAnalytics = async (req, res) => {
         day.setDate(thirtyDaysAgo.getDate() + i); // Get each date in the last 30 days
         last30Days.push(day.toISOString().split('T')[0]); // Store date in YYYY-MM-DD format
       }
-    
+
       const result = await ordersCollection.aggregate([
         {
           $addFields: {
@@ -829,31 +867,31 @@ exports.getAnalytics = async (req, res) => {
           $sort: { "_id.createdAtDate": 1 }, // Sort by date
         },
       ]).toArray();
-    
+
       // Initialize an array for the last 30 days with zeros
       const dailyOrders = Array(30).fill(0);
-    
+
       // Populate the dailyOrders array with data from the result
       result.forEach(item => {
         // Find the index corresponding to the date in the last30Days array
         const index = last30Days.indexOf(item._id.createdAtDate);
-    
+
         // If the date is found in the last 30 days, update the corresponding index in the dailyOrders array
         if (index >= 0) {
           dailyOrders[index] = item.totalOrders;
         }
       });
-    
+
       return dailyOrders;
     };
-    
-    
+
+
     const aggregateLast24HoursOrders = async () => {
       // Get the current date and calculate the start time for the last 24 hours
       const now = new Date();
       const startTime = new Date(now);
       startTime.setHours(now.getHours() - 24); // 24 hours ago
-    
+
       const result = await ordersCollection.aggregate([
         {
           $addFields: {
@@ -892,29 +930,29 @@ exports.getAnalytics = async (req, res) => {
           $sort: { "_id.year": 1, "_id.day": 1, "_id.hour": 1 }, // Sort by year, day, and hour
         },
       ]).toArray();
-    
+
       // Prepare the last 24 hours array with zeros
       const hourlyOrders = Array(24).fill(0);
-    
+
       // Populate the hourlyOrders array with data from the result
       result.forEach(item => {
         const orderDate = new Date(item._id.year, 0); // Start of the year
         orderDate.setDate(item._id.day); // Add the day of the year
         orderDate.setHours(item._id.hour); // Add the hour
-    
+
         const diffInHours = Math.floor((now - orderDate) / (1000 * 60 * 60)); // Difference in hours from now
-    
+
         if (diffInHours >= 0 && diffInHours < 24) {
           const hourIndex = 23 - diffInHours; // Map to the last 24 hours
           hourlyOrders[hourIndex] = item.totalValue; // Set the total value for that hour
         }
       });
-    
+
       return hourlyOrders;
     };
-    
-    
-   
+
+
+
     // Aggregation function for sales and orders
     const aggregateMetrics = async (start, end) => {
       const metrics = await ordersCollection.aggregate([
@@ -1064,7 +1102,7 @@ exports.getAnalytics = async (req, res) => {
       monthlyOrders,
       dailyOrders,
       hourlyOrders,
-      total:{
+      total: {
         totalSales: totalSales[0]?.totalSales || 0,
         completedOrders: totalOrders[0]?.totalOrders || 0,
         totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,

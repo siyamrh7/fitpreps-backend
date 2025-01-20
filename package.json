@@ -15,7 +15,9 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
+    "bull": "^4.16.5",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
@@ -26,6 +28,8 @@
     "nodemon": "^3.1.7",
     "paynl-sdk": "^1.1.4",
     "php-serialize": "^5.0.1",
+    "puppeteer": "^24.1.0",
+    "redis": "^4.7.0",
     "wordpress-hash-node": "^1.0.0"
   }
 }

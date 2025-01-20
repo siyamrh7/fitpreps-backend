@@ -123,6 +123,7 @@ exports.getAllProducts = async (req, res) => {
         _stock: 1,
         total_sales: 1,
         nutretions_data: 1,
+        _product_background_color:1,
         producten_specificaties_data: 1,
         voedingswaarde_data: 1,
         _yith_wcpb_bundle_data: 1,

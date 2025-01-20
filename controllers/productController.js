@@ -106,7 +106,7 @@ exports.getAllProducts = async (req, res) => {
     const category = req.query.category;
 
     // Define the filter
-    const filter = category && category !== 'All' 
+    const filter = category && category !== 'Alle' 
       ? { status: "publish", categories: category } 
       : { status: "publish" };
 

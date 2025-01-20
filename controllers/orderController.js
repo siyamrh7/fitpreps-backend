@@ -41,11 +41,13 @@ exports.createOrder = async (req, res) => {
     //   });
     // }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
+
     const paymentData = {
       amount: total || 1,               // Amount to charge (in Euros)
       returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect after successful payment
       cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
-      ipAddress: req.ip,                 // User's IP address
+      ipAddress: ip ,                 // User's IP address
       enduser: {
         emailAddress: req.body.metadata._billing_email,
       },

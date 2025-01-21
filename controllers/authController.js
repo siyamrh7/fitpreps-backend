@@ -245,7 +245,7 @@ exports.requestPasswordReset = async (req, res) => {
 </div>`
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: "info@fitpreps.nl",
       to: email,
       subject: 'Aanvraag wachtwoord reset Fit Preps',
       html,

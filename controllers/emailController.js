@@ -1,10 +1,34 @@
 require('dotenv').config();
 const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
-const { google } = require("googleapis");
-const OAuth2 = google.auth.OAuth2;
 
 // Configure transporter
+// const TENANT_ID = "03158f2f-6310-495a-9653-1ddaabcd3b2b";
+// const CLIENT_ID = "aa6579a0-74c7-4736-81e3-71ce0b00883f";
+// const CLIENT_SECRET = "W4J8Q~g~Gb7Np1C7z1~I.lYUbBwYQixEhtGlEck5";
+// const SCOPES = "https://graph.microsoft.com/.default";  // The required permissions for the API
+
+// const msal = require('@azure/msal-node');
+
+// const clientSecret = "W4J8Q~g~Gb7Np1C7z1~I.lYUbBwYQixEhtGlEck5";
+// const clientId = "aa6579a0-74c7-4736-81e3-71ce0b00883f";
+// const tenantId = "03158f2f-6310-495a-9653-1ddaabcd3b2b";
+// const aadEndpoint =
+//   process.env.AAD_ENDPOINT || 'https://login.microsoftonline.com';
+// const graphEndpoint =
+//   process.env.GRAPH_ENDPOINT || 'https://graph.microsoft.com';
+
+// const msalConfig = {
+//   auth: {
+//     clientId,
+//     clientSecret,
+//     authority: aadEndpoint + '/' + tenantId,
+//   },
+// };
+
+// const tokenRequest = {
+//   scopes: [graphEndpoint + '/.default'],
+// };
 
 
 async function generatePdfBuffer(htmlContent) {
@@ -23,8 +47,8 @@ async function generatePdfBuffer(htmlContent) {
 
   return pdfBuffer;
 }
-const email=process.env.EMAIL_USER
-const password=process.env.EMAIL_PASSWORD
+const email = process.env.EMAIL_USER
+const password = process.env.EMAIL_PASSWORD
 
 // const transporter = nodemailer.createTransport({
 //   host: 'smtp.office365.com',
@@ -78,9 +102,39 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: email, // Replace with your email
-    pass:password, // Replace with your password or app password
+    pass: password, // Replace with your password or app password
   }
 });
+
+// async function getAccessToken() {
+//   const tokenUrl = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
+
+//   const params = new URLSearchParams();
+//   params.append("client_id", CLIENT_ID);
+//   params.append("client_secret", CLIENT_SECRET);
+//   params.append("scope", SCOPES);
+//   params.append("grant_type", "client_credentials"); // Client Credentials Flow doesn't need authorization code
+
+//   try {
+//     const response = await fetch(tokenUrl, {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/x-www-form-urlencoded",
+//       },
+//       body: params,
+//     });
+
+//     const data = await response.json();
+//     if (response.ok) {
+//       return data.access_token; // Access token to use with Nodemailer
+//     } else {
+//       console.error("Error:", data);
+//     }
+//   } catch (error) {
+//     console.error("Fetch error:", error);
+//   }
+// }
+
 exports.contactEmailController = async (mailOptions) => {
   try {
     await transporter.sendMail(mailOptions);
@@ -91,14 +145,60 @@ exports.contactEmailController = async (mailOptions) => {
 
 exports.requestPasswordResetController = async (mailOptions) => {
   try {
- 
+
+
+  //   const cca = new msal.ConfidentialClientApplication(msalConfig);
+  //   const tokenInfo = await cca.acquireTokenByClientCredential(tokenRequest);
+
+  //   const mail = {
+  //     subject: 'Microsoft Graph JavaScript Sample',
+  //     //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
+  //     from: {
+  //       emailAddress: {
+  //         address: 'info@fitpreps.nl',
+  //       },
+  //     },
+  //     toRecipients: [
+  //       {
+  //         emailAddress: {
+  //           address: 'siyamrh7@gmail.com',
+  //         },
+  //       },
+  //     ],
+  //     body: {
+  //       content:
+  //         '<h1>MicrosoftGraph JavaScript Sample</h1>This is the email body',
+  //       contentType: 'html',
+  //     },
+  //   };
+  //   console.log(tokenInfo.accessToken)
+  //   const headers = {
+  //     'Authorization': `Bearer ${tokenInfo.accessToken}`,
+  //     'Content-Type': 'application/json'
+  //   };
+
+  //   const options = {
+  //     method: 'POST',
+  //     headers,
+  //     body: JSON.stringify({ message: mail, saveToSentItems: false }),
+  //   };
+
+  //  const data= await fetch(
+  //     graphEndpoint + '/v1.0/users/info@fitpreps.nl/sendMail',
+  //     options
+  //   );
+  //   console.log(data)
+
     await transporter.sendMail(mailOptions);
 
+
+
   } catch (error) {
-    console.error(error);}
+    console.error(error);
+  }
 };
 
-exports.newAccountEmailController = async (user,password) => {
+exports.newAccountEmailController = async (user, password) => {
   try {
     var html = `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 0; margin: 0;">
@@ -155,12 +255,12 @@ exports.newAccountEmailController = async (user,password) => {
     </table>
 </div>`
 
-const mailOptions = {
-  from: email,
-  to: user.email,
-  subject: 'Bedankt voor het aanmaken van een account bij Fit Preps',
-  html,
-}
+    const mailOptions = {
+      from: email,
+      to: user.email,
+      subject: 'Bedankt voor het aanmaken van een account bij Fit Preps',
+      html,
+    }
     await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error(error);
@@ -174,7 +274,6 @@ exports.orderEmailController = async (orderData, title, description) => {
   try {
     // const { orderData } = req.body;
     // const file = req.file; // The uploaded file
-
     if (!orderData) {
       return res.status(400).send({ error: "Email and message are required." });
     }
@@ -223,7 +322,7 @@ exports.orderEmailController = async (orderData, title, description) => {
                                         }}
                                     >
                                         €
-                                        ${parseFloat(item.meta._line_total)}
+                                        ${parseFloat(item.meta._line_total).toFixed(2)}
 
                                     </td>
                                 </tr>
@@ -425,7 +524,7 @@ exports.orderEmailController = async (orderData, title, description) => {
           <p style="margin: 0; font-size: 16px;"><strong>${product.order_item_name}</strong></p>
           <p style="margin: 5px 0 0; font-size: 14px;">Aantal: ${product.meta._qty}</p>
         </div>
-        <p style="margin: 0 0 0 auto; font-size: 16px; font-weight: bold;">€ ${product.meta._line_total}</p>
+        <p style="margin: 0 0 0 auto; font-size: 16px; font-weight: bold;">€ ${parseFloat(product.meta._line_total).toFixed(2)}</p>
       </div>
     `
       )
@@ -506,7 +605,7 @@ exports.orderEmailController = async (orderData, title, description) => {
           `,
       attachments,
       replyTo: "info@fitpreps.nl",
-    
+
     };
 
     // Send email
@@ -570,7 +669,7 @@ exports.orderEmailController2 = async (orderData, title, description) => {
                                         }}
                                     >
                                         €
-                                        ${parseFloat(item.meta._line_total)}
+                                        ${parseFloat(item.meta._line_total).toFixed(2)}
 
                                     </td>
                                 </tr>
@@ -772,7 +871,7 @@ exports.orderEmailController2 = async (orderData, title, description) => {
           <p style="margin: 0; font-size: 16px;"><strong>${product.order_item_name}</strong></p>
           <p style="margin: 5px 0 0; font-size: 14px;">Aantal: ${product.meta._qty}</p>
         </div>
-        <p style="margin: 0 0 0 auto; font-size: 16px; font-weight: bold;">€ ${product.meta._line_total}</p>
+        <p style="margin: 0 0 0 auto; font-size: 16px; font-weight: bold;">€ ${parseFloat(product.meta._line_total).toFixed(2)}</p>
       </div>
     `
       )

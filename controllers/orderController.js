@@ -238,7 +238,7 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if (result.isPaid()) {
+        if (result.isPaid() && orderData.status !== 'processing') {
 
           const productsCollection = getDB().collection('products');
 

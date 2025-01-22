@@ -180,14 +180,7 @@ exports.requestPasswordReset = async (req, res) => {
     const resetExpires = Date.now() + 3600000; // 1 hour
     await usersCollection.updateOne({ _id: user._id }, { $set: { resetToken: resetTokenHash, resetExpires } });
 
-    // Send the token via email
-    // const transporter = nodemailer.createTransport({
-    //   service: 'gmail',
-    //   auth: {
-    //     user: process.env.EMAIL_USER,
-    //     pass: process.env.EMAIL_PASSWORD,
-    //   },
-    // });
+
 
     const resetLink = `${process.env.FRONTEND_URI}/mijn-account/lost-password?token=${resetToken}`;
     var html = `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff;">
@@ -244,19 +237,33 @@ exports.requestPasswordReset = async (req, res) => {
     </table>
 </div>`
 
+
     const mailOptions = {
-      from: "info@fitpreps.nl",
-      to: email,
       subject: 'Aanvraag wachtwoord reset Fit Preps',
-      html,
-    }
-    // await transporter.sendMail({
-    //   from: process.env.EMAIL_USER,
-    //   to: email,
-    //   subject: 'Aanvraag wachtwoord reset Fit Preps',
-    //   // html: `<p>Click <a href="${resetLink}">here</a> to reset your password. This link is valid for 1 hour.</p>`,
-    //   html,
-    // });
+      //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
+      from: {
+        emailAddress: {
+          address: 'bestellingen@fitpreps.nl',
+        },
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: email,
+          },
+        },
+      ],
+      body: {
+        content: html,
+        contentType: 'html',
+      },
+      replyTo: [{
+        emailAddress: {
+          address: 'info@fitpreps.nl',
+        }
+      }],
+
+    };
     setImmediate(async () =>
       await emailQueue.add(
         { emailType: "reset-password", mailOptions },

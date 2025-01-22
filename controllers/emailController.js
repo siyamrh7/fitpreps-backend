@@ -1,35 +1,47 @@
 require('dotenv').config();
-const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
+const fs = require('fs');
+const path = require('path');
 
-// Configure transporter
-// const TENANT_ID = "03158f2f-6310-495a-9653-1ddaabcd3b2b";
-// const CLIENT_ID = "aa6579a0-74c7-4736-81e3-71ce0b00883f";
-// const CLIENT_SECRET = "W4J8Q~g~Gb7Np1C7z1~I.lYUbBwYQixEhtGlEck5";
-// const SCOPES = "https://graph.microsoft.com/.default";  // The required permissions for the API
+const msal = require('@azure/msal-node');
 
-// const msal = require('@azure/msal-node');
+const clientSecret = "AKX8Q~rVIPiMiqjFc69ci9xhfuJyGrV0ibz~4bZT";
+const clientId = "aa6579a0-74c7-4736-81e3-71ce0b00883f";
+const tenantId = "03158f2f-6310-495a-9653-1ddaabcd3b2b";
+const aadEndpoint =
+  process.env.AAD_ENDPOINT || 'https://login.microsoftonline.com';
+const graphEndpoint =
+  process.env.GRAPH_ENDPOINT || 'https://graph.microsoft.com';
 
-// const clientSecret = "W4J8Q~g~Gb7Np1C7z1~I.lYUbBwYQixEhtGlEck5";
-// const clientId = "aa6579a0-74c7-4736-81e3-71ce0b00883f";
-// const tenantId = "03158f2f-6310-495a-9653-1ddaabcd3b2b";
-// const aadEndpoint =
-//   process.env.AAD_ENDPOINT || 'https://login.microsoftonline.com';
-// const graphEndpoint =
-//   process.env.GRAPH_ENDPOINT || 'https://graph.microsoft.com';
+const msalConfig = {
+  auth: {
+    clientId,
+    clientSecret,
+    authority: aadEndpoint + '/' + tenantId,
+  },
+};
 
-// const msalConfig = {
-//   auth: {
-//     clientId,
-//     clientSecret,
-//     authority: aadEndpoint + '/' + tenantId,
-//   },
-// };
+const tokenRequest = {
+  scopes: [graphEndpoint + '/.default'],
+};
 
-// const tokenRequest = {
-//   scopes: [graphEndpoint + '/.default'],
-// };
+let tokenCache = null;
 
+const getAccessToken = async () => {
+  // Check if token exists and is not expired
+  if (!tokenCache || new Date(tokenCache.expiresOn) <= new Date()) {
+    console.log("token_expired requesting new token")
+    const cca = new msal.ConfidentialClientApplication(msalConfig);
+    const tokenInfo = await cca.acquireTokenByClientCredential(tokenRequest);
+
+    tokenCache = {
+      accessToken: tokenInfo.accessToken,
+      expiresOn: tokenInfo.expiresOn, // Use expiresOn from tokenInfo
+      extExpiresOn: tokenInfo.extExpiresOn, // Optional: track extended expiry
+    };
+  }
+  return tokenCache.accessToken;
+};
 
 async function generatePdfBuffer(htmlContent) {
   // Launch Puppeteer to render the HTML to a PDF
@@ -50,94 +62,26 @@ async function generatePdfBuffer(htmlContent) {
 const email = process.env.EMAIL_USER
 const password = process.env.EMAIL_PASSWORD
 
-// const transporter = nodemailer.createTransport({
-//   host: 'smtp.office365.com',
-//   port: 587,
-//   secure: false,
-//   auth: {
-//     user: email, // Replace with your email
-//     pass:password, // Replace with your password or app password
-//   }
-// });
-// const createTransporter = async () => {
-//   try {
-//     const oauth2Client = new OAuth2(
-//         process.env.CLIENT_ID,
-//         process.env.CLIENT_SECRET,
-//         "https://developers.google.com/oauthplayground"
-//       );
-
-//       oauth2Client.setCredentials({
-//         refresh_token: process.env.REFRESH_TOKEN,
-//       });
-
-//       const accessToken = await new Promise((resolve, reject) => {
-//         oauth2Client.getAccessToken((err, token) => {
-//           if (err) {
-//             console.log("*ERR: ", err)
-//             reject();
-//           }
-//           resolve(token); 
-//         });
-//       });
-
-//       const transporter = nodemailer.createTransport({
-//         service: "gmail",
-//         auth: {
-//           type: "OAuth2",
-//           user: process.env.USER_EMAIL,
-//           accessToken,
-//           clientId: process.env.CLIENT_ID,
-//           clientSecret: process.env.CLIENT_SECRET,
-//           refreshToken: process.env.REFRESH_TOKEN,
-//         },
-//       });
-//       return transporter;
-//   } catch (err) {
-//     return err
-//   }
-// };
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: email, // Replace with your email
-    pass: password, // Replace with your password or app password
-  }
-});
-
-// async function getAccessToken() {
-//   const tokenUrl = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
-
-//   const params = new URLSearchParams();
-//   params.append("client_id", CLIENT_ID);
-//   params.append("client_secret", CLIENT_SECRET);
-//   params.append("scope", SCOPES);
-//   params.append("grant_type", "client_credentials"); // Client Credentials Flow doesn't need authorization code
-
-//   try {
-//     const response = await fetch(tokenUrl, {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/x-www-form-urlencoded",
-//       },
-//       body: params,
-//     });
-
-//     const data = await response.json();
-//     if (response.ok) {
-//       return data.access_token; // Access token to use with Nodemailer
-//     } else {
-//       console.error("Error:", data);
-//     }
-//   } catch (error) {
-//     console.error("Fetch error:", error);
-//   }
-// }
 
 exports.contactEmailController = async (mailOptions) => {
   try {
-    await transporter.sendMail(mailOptions);
+    const accessToken = await getAccessToken();
+
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    const options = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: mailOptions, saveToSentItems: false }),
+    };
+
+    await fetch(
+      `${graphEndpoint}/v1.0/users/info@fitpreps.nl/sendMail`,
+      options
+    );
   } catch (error) {
     console.error(`Error sending email of contact email.`, error)
   }
@@ -145,58 +89,28 @@ exports.contactEmailController = async (mailOptions) => {
 
 exports.requestPasswordResetController = async (mailOptions) => {
   try {
+    const accessToken = await getAccessToken();
 
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
 
-  //   const cca = new msal.ConfidentialClientApplication(msalConfig);
-  //   const tokenInfo = await cca.acquireTokenByClientCredential(tokenRequest);
+    const options = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: mailOptions, saveToSentItems: false }),
+    };
 
-  //   const mail = {
-  //     subject: 'Microsoft Graph JavaScript Sample',
-  //     //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
-  //     from: {
-  //       emailAddress: {
-  //         address: 'info@fitpreps.nl',
-  //       },
-  //     },
-  //     toRecipients: [
-  //       {
-  //         emailAddress: {
-  //           address: 'siyamrh7@gmail.com',
-  //         },
-  //       },
-  //     ],
-  //     body: {
-  //       content:
-  //         '<h1>MicrosoftGraph JavaScript Sample</h1>This is the email body',
-  //       contentType: 'html',
-  //     },
-  //   };
-  //   console.log(tokenInfo.accessToken)
-  //   const headers = {
-  //     'Authorization': `Bearer ${tokenInfo.accessToken}`,
-  //     'Content-Type': 'application/json'
-  //   };
-
-  //   const options = {
-  //     method: 'POST',
-  //     headers,
-  //     body: JSON.stringify({ message: mail, saveToSentItems: false }),
-  //   };
-
-  //  const data= await fetch(
-  //     graphEndpoint + '/v1.0/users/info@fitpreps.nl/sendMail',
-  //     options
-  //   );
-  //   console.log(data)
-
-    await transporter.sendMail(mailOptions);
-
-
-
+    await fetch(
+      `${graphEndpoint}/v1.0/users/info@fitpreps.nl/sendMail`,
+      options
+    );
   } catch (error) {
     console.error(error);
   }
 };
+
 
 exports.newAccountEmailController = async (user, password) => {
   try {
@@ -254,14 +168,55 @@ exports.newAccountEmailController = async (user, password) => {
         </tr>
     </table>
 </div>`
-
     const mailOptions = {
-      from: email,
-      to: user.email,
-      subject: 'Bedankt voor het aanmaken van een account bij Fit Preps',
-      html,
-    }
-    await transporter.sendMail(mailOptions);
+      subject: `Bedankt voor het aanmaken van een account bij Fit Preps`,
+      //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
+      from: {
+        emailAddress: {
+          address: 'bestellingen@fitpreps.nl',
+        },
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: user.email,
+          },
+        },
+      ],
+      body: {
+        content: html,
+        contentType: 'html',
+      },
+      replyTo: [{
+        emailAddress: {
+          address: 'info@fitpreps.nl',
+        }
+      }],
+    };
+    const accessToken = await getAccessToken();
+
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    const options = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: mailOptions, saveToSentItems: false }),
+    };
+
+    await fetch(
+      `${graphEndpoint}/v1.0/users/info@fitpreps.nl/sendMail`,
+      options
+    );
+    // const mailOptions = {
+    //   from: email,
+    //   to: user.email,
+    //   subject: 'Bedankt voor het aanmaken van een account bij Fit Preps',
+    //   html,
+    // }
+    // await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error(error);
   }
@@ -270,10 +225,9 @@ exports.newAccountEmailController = async (user, password) => {
 
 
 exports.orderEmailController = async (orderData, title, description) => {
-
+  console.log(title)
   try {
-    // const { orderData } = req.body;
-    // const file = req.file; // The uploaded file
+ 
     if (!orderData) {
       return res.status(400).send({ error: "Email and message are required." });
     }
@@ -504,17 +458,25 @@ exports.orderEmailController = async (orderData, title, description) => {
 </html>
 
 `;
-    const pdfBuffer = await generatePdfBuffer(htmlContent);
 
-    // Attach file if it exists
-    const attachments = pdfBuffer
-      ? [
-        {
-          filename: "Factuur.pdf",
-          content: pdfBuffer,
-        },
-      ]
-      : [];
+ // Step 1: Generate PDF buffer from HTML content
+ const pdfBuffer = await generatePdfBuffer(htmlContent);
+
+ // Step 2: Create a temporary PDF file in the 'uploads' folder
+ const pdfFilePath = path.join(path.resolve(__dirname, '../uploads'), `${orderData._id}.pdf`);
+ fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+ // Step 3: Prepare the email attachments
+ const attachments = [
+   {
+     '@odata.type': '#microsoft.graph.fileAttachment',
+     name: "Factuur_" + orderData._id + ".pdf",
+     contentType: 'application/pdf',
+     contentBytes: fs.readFileSync(pdfFilePath).toString('base64'),
+   },
+ ];
+ 
+    
     const productHTML = orderData.items
       .map(
         (product) => `
@@ -529,87 +491,129 @@ exports.orderEmailController = async (orderData, title, description) => {
     `
       )
       .join(''); // Combine all product divs into a single string
+    const html = `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+<div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+  <!-- Header -->
+  <div style="background-color: #ff4e00; padding: 10px;">
+    <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">${title}</h1>
+  </div>
+  
+  <!-- Content -->
+  <div style="padding: 20px;">
+    <p style="margin: 0; font-size: 16px;">
+      Beste ${orderData.metadata._billing_first_name}, ${title} <br><br>
+      ${description}
+    </p>
+    
+    <h2 style="margin-top: 20px; font-size: 18px;">Overzicht van jouw bestelling met referentie #${orderData._id}</h2>
 
-    // Mail options
-    const mailOptions = {
-      from: "Fitpreps",
-      to: orderData.metadata._shipping_email,
-      subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
-      html: `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
-        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
-          <!-- Header -->
-          <div style="background-color: #ff4e00; padding: 10px;">
-            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">${title}</h1>
-          </div>
-          
-          <!-- Content -->
-          <div style="padding: 20px;">
-            <p style="margin: 0; font-size: 16px;">
-              Beste ${orderData.metadata._billing_first_name}, ${title} <br><br>
-              ${description}
-            </p>
-            
-            <h2 style="margin-top: 20px; font-size: 18px;">Overzicht van jouw bestelling met referentie #${orderData._id}</h2>
-      
-            <!-- Order Details -->
-            <div style="border-bottom: 1px solid #dddddd; padding-bottom: 15px; margin-bottom: 15px;">
-            ${productHTML}
-            </div>
-      
-            <!-- Summary -->
-            <table style="width: 100%; font-size: 16px; margin-bottom: 20px;">
-              <tr>
-                <td style="padding: 5px 0;">Subtotaal</td>
-                <td style="padding: 5px 0; text-align: right;">€ ${(parseFloat(orderData.total) - (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax))).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0;">Korting</td>
-                <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0;">Verzending</td>
-                <td style="padding: 5px 0; text-align: right;">€ ${orderData.metadata._order_shipping == "0" ? "Gratis" : (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax)).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0; font-weight: bold;">Totaal</td>
-                <td style="padding: 5px 0; text-align: right; font-weight: bold;">€ ${orderData.total}</td>
-              </tr>
-            </table>
-      
-            <!-- Addresses -->
-            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 20px;">
-              <div style="width: 50%;">
-                <h3 style="margin: 0; font-size: 16px;">Factuuradres</h3>
-                <p style="margin: 5px 0 0;">${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name}<br>${orderData.metadata._billing_address_1}<br>${orderData.metadata._billing_address_2}<br>${orderData.metadata._billing_postcode} ${orderData.metadata._billing_city}<br>${orderData.metadata._billing_country}<br>${orderData.metadata._billing_phone}<br>${orderData.metadata._billing_email}</p>
-              </div>
-              <div>
-                <h3 style="margin: 0; font-size: 16px;">Verzendadres</h3>
-                <p style="margin: 5px 0 0;">${orderData.metadata._shipping_first_name} ${orderData.metadata._shipping_last_name}<br>${orderData.metadata._shipping_address_1}<br>${orderData.metadata._shipping_address_2}<br>${orderData.metadata._shipping_postcode} ${orderData.metadata._shipping_city}<br>${orderData.metadata._shipping_country}<br>${orderData.metadata._shipping_phone}</p>
-              </div>
-            </div>
-      
-            <!-- Footer -->
-            <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px;">
-              <p style="margin: 0; font-size: 14px;">Volg ons op</p>
-              <p style="margin: 10px 0;">
-                <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
-                <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
-              </p>
-              <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
-              <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
-              <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
-            </div>
-          </div>
-        </div>
+    <!-- Order Details -->
+    <div style="border-bottom: 1px solid #dddddd; padding-bottom: 15px; margin-bottom: 15px;">
+    ${productHTML}
     </div>
-          `,
-      attachments,
-      replyTo: "info@fitpreps.nl",
 
+    <!-- Summary -->
+    <table style="width: 100%; font-size: 16px; margin-bottom: 20px;">
+      <tr>
+        <td style="padding: 5px 0;">Subtotaal</td>
+        <td style="padding: 5px 0; text-align: right;">€ ${(parseFloat(orderData.total) - (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax))).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0;">Korting</td>
+        <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0;">Verzending</td>
+        <td style="padding: 5px 0; text-align: right;">€ ${orderData.metadata._order_shipping == "0" ? "Gratis" : (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax)).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; font-weight: bold;">Totaal</td>
+        <td style="padding: 5px 0; text-align: right; font-weight: bold;">€ ${orderData.total}</td>
+      </tr>
+    </table>
+
+    <!-- Addresses -->
+    <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 20px;">
+      <div style="width: 50%;">
+        <h3 style="margin: 0; font-size: 16px;">Factuuradres</h3>
+        <p style="margin: 5px 0 0;">${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name}<br>${orderData.metadata._billing_address_1}<br>${orderData.metadata._billing_address_2}<br>${orderData.metadata._billing_postcode} ${orderData.metadata._billing_city}<br>${orderData.metadata._billing_country}<br>${orderData.metadata._billing_phone}<br>${orderData.metadata._billing_email}</p>
+      </div>
+      <div>
+        <h3 style="margin: 0; font-size: 16px;">Verzendadres</h3>
+        <p style="margin: 5px 0 0;">${orderData.metadata._shipping_first_name} ${orderData.metadata._shipping_last_name}<br>${orderData.metadata._shipping_address_1}<br>${orderData.metadata._shipping_address_2}<br>${orderData.metadata._shipping_postcode} ${orderData.metadata._shipping_city}<br>${orderData.metadata._shipping_country}<br>${orderData.metadata._shipping_phone}</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px;">
+      <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+      <p style="margin: 10px 0;">
+        <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+        <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+      </p>
+      <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+      <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+      <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+    </div>
+  </div>
+</div>
+</div>
+  `
+
+
+    const mailOptions = {
+      subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
+      //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
+      from: {
+        emailAddress: {
+          address: 'bestellingen@fitpreps.nl',
+        },
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: orderData.metadata._billing_email,
+          },
+        },
+      ],
+      body: {
+        content: html,
+        contentType: 'html',
+      },
+      replyTo: [{
+        emailAddress: {
+          address: 'info@fitpreps.nl',
+        }
+      }],
+      attachments,
     };
+   
 
     // Send email
-    await transporter.sendMail(mailOptions);
+    const accessToken = await getAccessToken();
+
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    const options = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: mailOptions, saveToSentItems: false }),
+    };
+
+    const response = await fetch(
+      `${graphEndpoint}/v1.0/users/info@fitpreps.nl/sendMail`,
+      options
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error sending email:', error);
+    } else {
+      fs.unlinkSync(pdfFilePath);
+      console.log('Email sent successfully!');
+    }    
   } catch (error) {
     console.log("Error sending email:", error);
   }
@@ -618,9 +622,7 @@ exports.orderEmailController = async (orderData, title, description) => {
 exports.orderEmailController2 = async (orderData, title, description) => {
 
   try {
-    // const { orderData } = req.body;
-    // const file = req.file; // The uploaded file
-
+   
     if (!orderData) {
       return res.status(400).send({ error: "Email and message are required." });
     }
@@ -851,17 +853,24 @@ exports.orderEmailController2 = async (orderData, title, description) => {
 </html>
 
 `;
-    const pdfBuffer = await generatePdfBuffer(htmlContent);
+ // Step 1: Generate PDF buffer from HTML content
+ const pdfBuffer = await generatePdfBuffer(htmlContent);
 
-    // Attach file if it exists
-    const attachments = pdfBuffer
-      ? [
-        {
-          filename: "Factuur.pdf",
-          content: pdfBuffer,
-        },
-      ]
-      : [];
+ // Step 2: Create a temporary PDF file in the 'uploads' folder
+ const pdfFilePath = path.join(path.resolve(__dirname, '../uploads'), `${orderData._id}2.pdf`);
+ fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+ // Step 3: Prepare the email attachments
+ const attachments = [
+   {
+     '@odata.type': '#microsoft.graph.fileAttachment',
+     name: "Factuur_" + orderData._id + ".pdf",
+     contentType: 'application/pdf',
+     contentBytes: fs.readFileSync(pdfFilePath).toString('base64'),
+   },
+ ];
+
+ // Step 4: Send the email
     const productHTML = orderData.items
       .map(
         (product) => `
@@ -876,84 +885,201 @@ exports.orderEmailController2 = async (orderData, title, description) => {
     `
       )
       .join(''); // Combine all product divs into a single string
+const html= `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+<div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+  <!-- Header -->
+  <div style="background-color: #ff4e00; padding: 10px;">
+    <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">New Order #${orderData._id}</h1>
+  </div>
+  
+  <!-- Content -->
+  <div style="padding: 20px;">
+    <p style="margin: 0; font-size: 16px;">
+      ${title} <br><br>
+    </p>
+    
+    <h2 style="margin-top: 20px; font-size: 18px;">Overzicht van jouw bestelling met referentie #${orderData._id}</h2>
 
-    // Mail options
-    const mailOptions = {
-      from: "Fitpreps",
-      to: email,
-      subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
-      html: `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
-        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
-          <!-- Header -->
-          <div style="background-color: #ff4e00; padding: 10px;">
-            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">New Order #${orderData._id}</h1>
-          </div>
-          
-          <!-- Content -->
-          <div style="padding: 20px;">
-            <p style="margin: 0; font-size: 16px;">
-              ${title} <br><br>
-            </p>
-            
-            <h2 style="margin-top: 20px; font-size: 18px;">Overzicht van jouw bestelling met referentie #${orderData._id}</h2>
-      
-            <!-- Order Details -->
-            <div style="border-bottom: 1px solid #dddddd; padding-bottom: 15px; margin-bottom: 15px;">
-            ${productHTML}
-            </div>
-      
-            <!-- Summary -->
-            <table style="width: 100%; font-size: 16px; margin-bottom: 20px;">
-              <tr>
-                <td style="padding: 5px 0;">Subtotaal</td>
-                <td style="padding: 5px 0; text-align: right;">€ ${(parseFloat(orderData.total) - (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax))).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0;">Korting</td>
-                <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0;">Verzending</td>
-                <td style="padding: 5px 0; text-align: right;">€ ${orderData.metadata._order_shipping == "0" ? "Gratis" : (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax)).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0; font-weight: bold;">Totaal</td>
-                <td style="padding: 5px 0; text-align: right; font-weight: bold;">€ ${orderData.total}</td>
-              </tr>
-            </table>
-      
-            <!-- Addresses -->
-            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 20px;">
-              <div style="width: 50%;">
-                <h3 style="margin: 0; font-size: 16px;">Factuuradres</h3>
-                <p style="margin: 5px 0 0;">${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name}<br>${orderData.metadata._billing_address_1}<br>${orderData.metadata._billing_address_2}<br>${orderData.metadata._billing_postcode} ${orderData.metadata._billing_city}<br>${orderData.metadata._billing_country}<br>${orderData.metadata._billing_phone}<br>${orderData.metadata._billing_email}</p>
-              </div>
-              <div>
-                <h3 style="margin: 0; font-size: 16px;">Verzendadres</h3>
-                <p style="margin: 5px 0 0;">${orderData.metadata._shipping_first_name} ${orderData.metadata._shipping_last_name}<br>${orderData.metadata._shipping_address_1}<br>${orderData.metadata._shipping_address_2}<br>${orderData.metadata._shipping_postcode} ${orderData.metadata._shipping_city}<br>${orderData.metadata._shipping_country}<br>${orderData.metadata._shipping_phone}</p>
-              </div>
-            </div>
-      
-            <!-- Footer -->
-            <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px;">
-              <p style="margin: 0; font-size: 14px;">Volg ons op</p>
-              <p style="margin: 10px 0;">
-                <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
-                <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
-              </p>
-              <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
-              <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
-              <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
-            </div>
-          </div>
-        </div>
+    <!-- Order Details -->
+    <div style="border-bottom: 1px solid #dddddd; padding-bottom: 15px; margin-bottom: 15px;">
+    ${productHTML}
     </div>
-          `,
+
+    <!-- Summary -->
+    <table style="width: 100%; font-size: 16px; margin-bottom: 20px;">
+      <tr>
+        <td style="padding: 5px 0;">Subtotaal</td>
+        <td style="padding: 5px 0; text-align: right;">€ ${(parseFloat(orderData.total) - (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax))).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0;">Korting</td>
+        <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0;">Verzending</td>
+        <td style="padding: 5px 0; text-align: right;">€ ${orderData.metadata._order_shipping == "0" ? "Gratis" : (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax)).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 5px 0; font-weight: bold;">Totaal</td>
+        <td style="padding: 5px 0; text-align: right; font-weight: bold;">€ ${orderData.total}</td>
+      </tr>
+    </table>
+
+    <!-- Addresses -->
+    <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 20px;">
+      <div style="width: 50%;">
+        <h3 style="margin: 0; font-size: 16px;">Factuuradres</h3>
+        <p style="margin: 5px 0 0;">${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name}<br>${orderData.metadata._billing_address_1}<br>${orderData.metadata._billing_address_2}<br>${orderData.metadata._billing_postcode} ${orderData.metadata._billing_city}<br>${orderData.metadata._billing_country}<br>${orderData.metadata._billing_phone}<br>${orderData.metadata._billing_email}</p>
+      </div>
+      <div>
+        <h3 style="margin: 0; font-size: 16px;">Verzendadres</h3>
+        <p style="margin: 5px 0 0;">${orderData.metadata._shipping_first_name} ${orderData.metadata._shipping_last_name}<br>${orderData.metadata._shipping_address_1}<br>${orderData.metadata._shipping_address_2}<br>${orderData.metadata._shipping_postcode} ${orderData.metadata._shipping_city}<br>${orderData.metadata._shipping_country}<br>${orderData.metadata._shipping_phone}</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px;">
+      <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+      <p style="margin: 10px 0;">
+        <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+        <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+      </p>
+      <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+      <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+      <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+    </div>
+  </div>
+</div>
+</div>
+  `
+    // Mail options
+    // const mailOptions = {
+    //   from: "Fitpreps",
+    //   to: "bestellingen@fitpreps.nl",
+    //   subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
+    //   html: `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+    //     <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+    //       <!-- Header -->
+    //       <div style="background-color: #ff4e00; padding: 10px;">
+    //         <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">New Order #${orderData._id}</h1>
+    //       </div>
+          
+    //       <!-- Content -->
+    //       <div style="padding: 20px;">
+    //         <p style="margin: 0; font-size: 16px;">
+    //           ${title} <br><br>
+    //         </p>
+            
+    //         <h2 style="margin-top: 20px; font-size: 18px;">Overzicht van jouw bestelling met referentie #${orderData._id}</h2>
+      
+    //         <!-- Order Details -->
+    //         <div style="border-bottom: 1px solid #dddddd; padding-bottom: 15px; margin-bottom: 15px;">
+    //         ${productHTML}
+    //         </div>
+      
+    //         <!-- Summary -->
+    //         <table style="width: 100%; font-size: 16px; margin-bottom: 20px;">
+    //           <tr>
+    //             <td style="padding: 5px 0;">Subtotaal</td>
+    //             <td style="padding: 5px 0; text-align: right;">€ ${(parseFloat(orderData.total) - (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax))).toFixed(2)}</td>
+    //           </tr>
+    //           <tr>
+    //             <td style="padding: 5px 0;">Korting</td>
+    //             <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
+    //           </tr>
+    //           <tr>
+    //             <td style="padding: 5px 0;">Verzending</td>
+    //             <td style="padding: 5px 0; text-align: right;">€ ${orderData.metadata._order_shipping == "0" ? "Gratis" : (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax)).toFixed(2)}</td>
+    //           </tr>
+    //           <tr>
+    //             <td style="padding: 5px 0; font-weight: bold;">Totaal</td>
+    //             <td style="padding: 5px 0; text-align: right; font-weight: bold;">€ ${orderData.total}</td>
+    //           </tr>
+    //         </table>
+      
+    //         <!-- Addresses -->
+    //         <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 20px;">
+    //           <div style="width: 50%;">
+    //             <h3 style="margin: 0; font-size: 16px;">Factuuradres</h3>
+    //             <p style="margin: 5px 0 0;">${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name}<br>${orderData.metadata._billing_address_1}<br>${orderData.metadata._billing_address_2}<br>${orderData.metadata._billing_postcode} ${orderData.metadata._billing_city}<br>${orderData.metadata._billing_country}<br>${orderData.metadata._billing_phone}<br>${orderData.metadata._billing_email}</p>
+    //           </div>
+    //           <div>
+    //             <h3 style="margin: 0; font-size: 16px;">Verzendadres</h3>
+    //             <p style="margin: 5px 0 0;">${orderData.metadata._shipping_first_name} ${orderData.metadata._shipping_last_name}<br>${orderData.metadata._shipping_address_1}<br>${orderData.metadata._shipping_address_2}<br>${orderData.metadata._shipping_postcode} ${orderData.metadata._shipping_city}<br>${orderData.metadata._shipping_country}<br>${orderData.metadata._shipping_phone}</p>
+    //           </div>
+    //         </div>
+      
+    //         <!-- Footer -->
+    //         <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px;">
+    //           <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+    //           <p style="margin: 10px 0;">
+    //             <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+    //             <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+    //           </p>
+    //           <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+    //           <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+    //           <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+    //         </div>
+    //       </div>
+    //     </div>
+    // </div>
+    //       `,
+    //   attachments,
+    // };
+
+    const mailOptions = {
+      subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
+      //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
+      from: {
+        emailAddress: {
+          address: 'bestellingen@fitpreps.nl',
+        },
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: "bestellingen@fitpreps.nl",
+          },
+        },
+      ],
+      body: {
+        content: html,
+        contentType: 'html',
+      },
+      replyTo: [{
+        emailAddress: {
+          address: orderData.metadata._billing_email,
+        }
+      }],
       attachments,
     };
+   
 
     // Send email
-    await transporter.sendMail(mailOptions);
+    const accessToken = await getAccessToken();
+
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    const options = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: mailOptions, saveToSentItems: false }),
+    };
+
+    const response = await fetch(
+      `${graphEndpoint}/v1.0/users/info@fitpreps.nl/sendMail`,
+      options
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error sending email:', error);
+    } else {
+      fs.unlinkSync(pdfFilePath);
+      console.log('Email sent successfully!');
+    }    
   } catch (error) {
     console.log("Error sending email:", error);
   }

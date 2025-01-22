@@ -1,6 +1,5 @@
 require('dotenv').config();
 const Bull = require('bull');
-const nodemailer = require('nodemailer');
 const { orderEmailController, contactEmailController, orderEmailController2,requestPasswordResetController, newAccountEmailController } = require('./emailController');
 
 // Initialize the email queue

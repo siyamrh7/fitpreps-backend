@@ -4,7 +4,6 @@ const { getDB } = require('../config/db');
 var hasher = require('wordpress-hash-node');
 const { unserialize } = require('php-serialize');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const emailQueue = require('./emailQueue')
 // Controller to handle user registration
 exports.register = async (req, res) => {

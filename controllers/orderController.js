@@ -67,7 +67,7 @@ exports.createOrder = async (req, res) => {
               $set: {
                 'metadata.transactionId': transactionId, // Adds or updates the transactionId in metadata
                 status: 'pending',  // Updates status to 'pending' (or awaiting_payment)
-                'metadata._customer_ip_address': req.ip,
+                'metadata._customer_ip_address': ip,
               },
             }
           );

@@ -131,7 +131,7 @@ exports.checkPayment = async (req, res) => {
             description: item.order_item_name,
             quantity: item.meta?._qty,
             value: item.meta?._line_total / item.meta?._qty,
-            weight: item.meta?._weight,
+            weight: item.meta?._weight || 1,
             product_id: item.meta?._id,
             item_id: item.meta?._id,
             sku: item.meta?._id
@@ -238,8 +238,19 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if (result.isPaid() && orderData.status !== 'processing') {
+        if (result.isPaid() && orderData.status !== "processing") {
+        // Fetch data from SendCloud API
+        const response = await fetch(url, options);
 
+        // Handle response
+        if (!response.ok) {
+          // Log and handle HTTP errors
+          const errorText = await response.text();
+          console.log(errorText)
+        }
+        await response.json();
+
+        // Update the order in your database
           const productsCollection = getDB().collection('products');
 
           // Build bulk operations
@@ -400,16 +411,7 @@ exports.checkPayment = async (req, res) => {
 
 
 
-          // Fetch data from SendCloud API
-          const response = await fetch(url, options);
-
-          // Handle response
-          if (!response.ok) {
-            // Log and handle HTTP errors
-            const errorText = await response.text();
-            console.log(errorText)
-          }
-          await response.json();
+  
         }
         // Send response
         res.status(200).json({
@@ -602,17 +604,32 @@ exports.getAllOrders = async (req, res) => {
     }
 
     // Filter by specific delivery date if provided
+    // if (deliveryDate) {
+    //   const specificDate = moment(deliveryDate, "YYYY-MM-DD").startOf("day");
+    //   const nextDay = specificDate.clone().add(1, "day");
+
+    //   // Update query to filter by specific delivery date
+    //   query["metadata._delivery_date"] = {
+    //     $gte: specificDate.toISOString(), // Start of the day
+    //     $lt: nextDay.toISOString(), // End of the day
+    //   };
+    // }
+    // if (deliveryDate) {
+    //   const specificDate = moment.utc(deliveryDate, "YYYY-MM-DD").startOf("day"); // Use UTC explicitly
+    //   const nextDay = specificDate.clone().add(1, "day"); // Next day's start in UTC
+    
+    //   // Update query to filter by specific delivery date
+    //   query["metadata._delivery_date"] = {
+    //     $gte: specificDate.toISOString(), // Start of the day in UTC
+    //     $lt: nextDay.toISOString(), // End of the day in UTC
+    //   };
+    // }
     if (deliveryDate) {
-      const specificDate = moment(deliveryDate, "YYYY-MM-DD").startOf("day");
-      const nextDay = specificDate.clone().add(1, "day");
-
-      // Update query to filter by specific delivery date
-      query["metadata._delivery_date"] = {
-        $gte: specificDate.toISOString(), // Start of the day
-        $lt: nextDay.toISOString(), // End of the day
-      };
+      // Directly use the deliveryDate as a string in the query
+      query["metadata._delivery_date"] = deliveryDate; // Expecting "2025-01-28" as string in the DB
     }
-
+    
+    
     // Filter by search query for name or phone
     if (searchQuery) {
       const regex = new RegExp(searchQuery, "i"); // Case-insensitive regex for search

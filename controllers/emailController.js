@@ -5,9 +5,12 @@ const path = require('path');
 
 const msal = require('@azure/msal-node');
 
-const clientSecret = process.env.CLIENT_SECRET;
-const clientId = process.env.CLIENT_ID;
-const tenantId = process.env.TENANT_ID;
+// const clientSecret = process.env.CLIENT_SECRET;
+// const clientId = process.env.CLIENT_ID;
+// const tenantId = process.env.TENANT_ID;
+ const clientSecret = "AKX8Q~rVIPiMiqjFc69ci9xhfuJyGrV0ibz~4bZT";
+const clientId = "aa6579a0-74c7-4736-81e3-71ce0b00883f";
+const tenantId = "03158f2f-6310-495a-9653-1ddaabcd3b2b";
 const aadEndpoint =
   process.env.AAD_ENDPOINT || 'https://login.microsoftonline.com';
 const graphEndpoint =

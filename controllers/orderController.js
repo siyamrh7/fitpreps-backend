@@ -41,7 +41,7 @@ exports.createOrder = async (req, res) => {
     //   });
     // }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
 
     const paymentData = {
       amount: total || 1,               // Amount to charge (in Euros)

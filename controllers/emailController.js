@@ -48,7 +48,10 @@ const getAccessToken = async () => {
 
 async function generatePdfBuffer(htmlContent) {
   // Launch Puppeteer to render the HTML to a PDF
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
   const page = await browser.newPage();
 
   // Set the HTML content

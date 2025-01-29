@@ -130,7 +130,7 @@ exports.checkPayment = async (req, res) => {
           return {
             description: item.order_item_name,
             quantity: item.meta?._qty,
-            value: item.meta?._line_total / item.meta?._qty,
+            value: parseFloat(item.meta?._line_total / item.meta?._qty).toFixed(2),
             weight: item.meta?._weight || 1,
             product_id: item.meta?._id,
             item_id: item.meta?._id,
@@ -238,7 +238,7 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if (result.isPaid() && orderData.status !== "processing") {
+        if (result.isPaid() && orderData.status !== 'processing') {
         // Fetch data from SendCloud API
         const response = await fetch(url, options);
 

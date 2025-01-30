@@ -249,7 +249,7 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if (result.isPaid() && orderData.status == 'pending') {
+        if (result.isPaid() && orderData.status == "pending") {
           setImmediate(async () => {
 
             await emailQueue.add(
@@ -260,7 +260,7 @@ exports.checkPayment = async (req, res) => {
               }
             )
             await emailQueue.add(
-              { orderData, title: `${orderData.metadata._billing_first_name} placed a order #..${orderData._id.slice(-5)} value ${orderData.total} with ${orderData.metadata._payment_method_title} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
+              { orderData, title: `${orderData.metadata._billing_first_name} placed a order #..${orderData._id.toString().slice(-5)} value ${orderData.total} with ${orderData.metadata._payment_method_title} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order delivery at ${orderData.metadata._delivery_date}`, emailType: "orderOwner" },
               {
                 attempts: 3, // Retry up to 3 times in case of failure
                 backoff: 5000, // Retry with a delay of 5 seconds

@@ -521,7 +521,7 @@ exports.orderEmailController = async (orderData, title, description) => {
       </tr>
       <tr>
         <td style="padding: 5px 0;">Korting</td>
-        <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
+        <td style="padding: 5px 0; text-align: right;">-€ ${parseFloat(orderData.metadata._cart_discount).toFixed(2)}</td>
       </tr>
       <tr>
         <td style="padding: 5px 0;">Verzending</td>
@@ -890,7 +890,7 @@ const html= `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; 
 <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
   <!-- Header -->
   <div style="background-color: #ff4e00; padding: 10px;">
-    <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">New Order #${orderData._id}</h1>
+   <!--  <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">New order</h1>  -->
   </div>
   
   <!-- Content -->
@@ -914,7 +914,7 @@ const html= `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; 
       </tr>
       <tr>
         <td style="padding: 5px 0;">Korting</td>
-        <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
+        <td style="padding: 5px 0; text-align: right;">-€ ${parseFloat(orderData.metadata._cart_discount).toFixed(2)}</td>
       </tr>
       <tr>
         <td style="padding: 5px 0;">Verzending</td>

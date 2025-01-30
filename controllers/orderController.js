@@ -138,7 +138,7 @@ exports.checkPayment = async (req, res) => {
     const parcelData = {
       parcel: {
         name: orderData.metadata._shipping_first_name + " " + orderData.metadata._shipping_last_name,
-        address: orderData.metadata._shipping_address_1,
+        address: orderData.metadata._shipping_address_1 + " " + orderData.metadata._shipping_address_2,
         city: orderData.metadata._shipping_city.slice(0, 28),
         postal_code: orderData.metadata._shipping_postcode,
         telephone: orderData.metadata._shipping_phone,
@@ -190,24 +190,7 @@ exports.checkPayment = async (req, res) => {
           paymentStatus = 'processing';
           // Fetch data from SendCloud API
           // const response = await fetch(url, options);
-          setImmediate(async () => {
-
-            await emailQueue.add(
-              { orderData, title: "bedankt voor je bestelling!", description: "We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.", emailType: "order" },
-              {
-                attempts: 3, // Retry up to 3 times in case of failure
-                backoff: 5000, // Retry with a delay of 5 seconds
-              }
-            )
-            await emailQueue.add(
-              { orderData, title: `${orderData.metadata._billing_first_name} placed a new order #${orderData._id} on your store`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
-              {
-                attempts: 3, // Retry up to 3 times in case of failure
-                backoff: 5000, // Retry with a delay of 5 seconds
-              }
-            )
-          }
-          );
+        
 
           // // Handle response
           // if (!response.ok) {
@@ -266,7 +249,25 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if (result.isPaid() && orderData.status !== 'processing') {
+        if (result.isPaid() && orderData.status == 'pending') {
+          setImmediate(async () => {
+
+            await emailQueue.add(
+              { orderData, title: "bedankt voor je bestelling!", description: "We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.", emailType: "order" },
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            )
+            await emailQueue.add(
+              { orderData, title: `${orderData.metadata._billing_first_name} placed a order #..${orderData._id.slice(-5)} value ${orderData.total} with ${orderData.metadata._payment_method_title} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
+              {
+                attempts: 3, // Retry up to 3 times in case of failure
+                backoff: 5000, // Retry with a delay of 5 seconds
+              }
+            )
+          }
+          );
           // Fetch data from SendCloud API
           const response = await fetch(url, options);
 

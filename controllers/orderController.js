@@ -47,10 +47,38 @@ exports.createOrder = async (req, res) => {
       amount: total || 1,               // Amount to charge (in Euros)
       returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect after successful payment
       cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
-      ipAddress: ip ,                 // User's IP address
+      ipAddress: ip,                 // User's IP address
+
       enduser: {
         emailAddress: req.body.metadata._billing_email,
+        phoneNumber: req.body.metadata._billing_phone,
+
       },
+      address: {
+        streetName: req.body.metadata._billing_address_1,
+        houseNumber: req.body.metadata._billing_address_2,
+        zipCode: req.body.metadata._billing_postcode,
+        city: req.body.metadata._billing_city,
+        countryCode: req.body.metadata._billing_country
+      },
+      invoiceAddress:{
+       streetName: req.body.metadata._billing_address_1,
+        houseNumber: req.body.metadata._billing_address_2,
+        zipCode: req.body.metadata._billing_postcode,
+        city: req.body.metadata._billing_city,
+        countryCode: req.body.metadata._billing_country,
+       
+    },
+    products: req.body.items.map((item) => {
+      return {
+       
+        id: item.meta?._id,
+        name: item.order_item_name,
+        price: parseFloat(item.meta?._line_total).toFixed(2),
+        qty:item.meta?._qty
+      }
+    })
+   
     };
 
     // Start the payment transaction using Pay.nl SDK
@@ -162,17 +190,17 @@ exports.checkPayment = async (req, res) => {
           paymentStatus = 'processing';
           // Fetch data from SendCloud API
           // const response = await fetch(url, options);
-          setImmediate(async () =>{
+          setImmediate(async () => {
 
             await emailQueue.add(
-              { orderData, title: "bedankt voor je bestelling!", description: "We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.",  emailType: "order" },
+              { orderData, title: "bedankt voor je bestelling!", description: "We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.", emailType: "order" },
               {
                 attempts: 3, // Retry up to 3 times in case of failure
                 backoff: 5000, // Retry with a delay of 5 seconds
               }
             )
             await emailQueue.add(
-              { orderData, title: `${orderData.metadata._billing_first_name} placed a new order #${orderData._id} on your store`, description: `${orderData.metadata._billing_first_name} placed a new order`,  emailType: "orderOwner" },
+              { orderData, title: `${orderData.metadata._billing_first_name} placed a new order #${orderData._id} on your store`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
               {
                 attempts: 3, // Retry up to 3 times in case of failure
                 backoff: 5000, // Retry with a delay of 5 seconds
@@ -190,32 +218,32 @@ exports.checkPayment = async (req, res) => {
           // await response.json();
         } else if (result.isCanceled()) {
           paymentStatus = 'cancelled';
-          setImmediate(async() =>{
+          setImmediate(async () => {
 
             await emailQueue.add(
-              { orderData, title: "Order Failed! Payment is cancelled!", description: "Your order is failed due to your payment cancellation. Here is your order summary! Please try again.",  emailType: "order" },  
+              { orderData, title: "Order Failed! Payment is cancelled!", description: "Your order is failed due to your payment cancellation. Here is your order summary! Please try again.", emailType: "order" },
               {
                 attempts: 3, // Retry up to 3 times in case of failure
                 backoff: 5000, // Retry with a delay of 5 seconds
               }
             ),
-            await emailQueue.add(
-              { orderData, title: `${orderData.metadata._billing_first_name} has cancelled order #${orderData._id} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`,  emailType: "orderOwner" },
-              {
-                attempts: 3, // Retry up to 3 times in case of failure
-                backoff: 5000, // Retry with a delay of 5 seconds
-              }
-            )
+              await emailQueue.add(
+                { orderData, title: `${orderData.metadata._billing_first_name} has cancelled order #${orderData._id} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
+                {
+                  attempts: 3, // Retry up to 3 times in case of failure
+                  backoff: 5000, // Retry with a delay of 5 seconds
+                }
+              )
 
           }
           );
           console.log('Transaction is canceled');
         } else if (result.isBeingVerified()) {
           paymentStatus = 'on-hold';
-          setImmediate(async() =>
+          setImmediate(async () =>
             // orderEmailController(orderData, "You payment in on hold!", "Your order is failed due to your payment. Here is your order summary! Please try again.")
             await emailQueue.add(
-              { orderData, title: "You payment in on hold!", description: "Your order is failed due to your payment. Here is your order summary! Please try again.",  emailType: "order" },  
+              { orderData, title: "You payment in on hold!", description: "Your order is failed due to your payment. Here is your order summary! Please try again.", emailType: "order" },
               {
                 attempts: 3, // Retry up to 3 times in case of failure
                 backoff: 5000, // Retry with a delay of 5 seconds
@@ -239,18 +267,18 @@ exports.checkPayment = async (req, res) => {
           }
         );
         if (result.isPaid() && orderData.status !== 'processing') {
-        // Fetch data from SendCloud API
-        const response = await fetch(url, options);
+          // Fetch data from SendCloud API
+          const response = await fetch(url, options);
 
-        // Handle response
-        if (!response.ok) {
-          // Log and handle HTTP errors
-          const errorText = await response.text();
-          console.log(errorText)
-        }
-        await response.json();
+          // Handle response
+          if (!response.ok) {
+            // Log and handle HTTP errors
+            const errorText = await response.text();
+            console.log(errorText)
+          }
+          await response.json();
 
-        // Update the order in your database
+          // Update the order in your database
           const productsCollection = getDB().collection('products');
 
           // Build bulk operations
@@ -411,7 +439,7 @@ exports.checkPayment = async (req, res) => {
 
 
 
-  
+
         }
         // Send response
         res.status(200).json({
@@ -617,7 +645,7 @@ exports.getAllOrders = async (req, res) => {
     // if (deliveryDate) {
     //   const specificDate = moment.utc(deliveryDate, "YYYY-MM-DD").startOf("day"); // Use UTC explicitly
     //   const nextDay = specificDate.clone().add(1, "day"); // Next day's start in UTC
-    
+
     //   // Update query to filter by specific delivery date
     //   query["metadata._delivery_date"] = {
     //     $gte: specificDate.toISOString(), // Start of the day in UTC
@@ -628,8 +656,8 @@ exports.getAllOrders = async (req, res) => {
       // Directly use the deliveryDate as a string in the query
       query["metadata._delivery_date"] = deliveryDate; // Expecting "2025-01-28" as string in the DB
     }
-    
-    
+
+
     // Filter by search query for name or phone
     if (searchQuery) {
       const regex = new RegExp(searchQuery, "i"); // Case-insensitive regex for search

@@ -22,6 +22,8 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.set('trust proxy', true);
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes

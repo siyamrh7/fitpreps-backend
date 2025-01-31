@@ -22,24 +22,270 @@ exports.createOrder = async (req, res) => {
     const ordersCollection = getDB().collection('orders');
 
     const results = await ordersCollection.insertOne(req.body);
-    // if(total == 0 ){
-    //   await ordersCollection.updateOne(
-    //     { _id: results.insertedId },
-    //     {
-    //       $set: {
-    //         'metadata.transactionId': null, // Adds or updates the transactionId in metadata
-    //         status: 'processing',  // Updates status to 'pending' (or awaiting_payment)
-    //         'metadata._customer_ip_address': req.ip,
-    //         updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
-    //       },
-    //     }
-    //   );
-    //   return res.status(200).json({
-    //     message: 'Order created successfully',
-    //     paymentUrl:`${process.env.FRONTEND_URI}/profile?tab=1`,
+    if(total == 0 ){
+      console.log(total)
+      const username = process.env.SENDCLOUD_API_USERNAME;
+      const password = process.env.SENDCLOUD_API_PASSWORD;
 
-    //   });
-    // }
+      const orderData = await ordersCollection.findOne({ _id: results.insertedId });
+      // Encode the credentials in base64
+      const base64Credentials = btoa(`${username}:${password}`);
+      // Extract parameters from the request if needed
+      const parcelData = {
+        parcel: {
+          name: orderData.metadata._shipping_first_name + " " + orderData.metadata._shipping_last_name,
+          address: orderData.metadata._shipping_address_1 + " " + orderData.metadata._shipping_address_2,
+          city: orderData.metadata._shipping_city.slice(0, 28),
+          postal_code: orderData.metadata._shipping_postcode,
+          telephone: orderData.metadata._shipping_phone,
+          request_label: false,
+          email: orderData.metadata._shipping_email,
+          data: {},
+          country: orderData.metadata._shipping_country,
+          shipment: {
+            // id: orderData.metadata.deliveryMethod
+            id:8
+          },
+          weight: orderData.totalWeight || 1.000,
+          order_number: orderData._id,
+          total_order_value_currency: "EUR",
+          total_order_value: orderData.total,
+          house_number: orderData.metadata._shipping_address_2,
+          parcel_items: orderData.items.map((item) => {
+            return {
+              description: item.order_item_name,
+              quantity: item.meta?._qty,
+              value: parseFloat(item.meta?._line_total / item.meta?._qty).toFixed(2),
+              weight: item.meta?._weight || 1,
+              product_id: item.meta?._id,
+              item_id: item.meta?._id,
+              sku: item.meta?._id
+            };
+          })
+        }
+      }
+  
+      const url = 'https://panel.sendcloud.sc/api/v2/parcels';
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Basic ${base64Credentials}`
+        },
+        body: JSON.stringify(parcelData)
+      };
+  
+      await ordersCollection.updateOne(
+        { _id: results.insertedId },
+        {
+          $set: {
+            'metadata.transactionId': "No Transaction", // Adds or updates the transactionId in metadata
+            status: 'processing',  // Updates status to 'pending' (or awaiting_payment)
+            'metadata._customer_ip_address': req.ip,
+            updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
+          },
+        }
+      );
+     
+        setImmediate(async () => {
+
+          await emailQueue.add(
+            { orderData, title: "bedankt voor je bestelling!", description: "We hebben je bestelling ontvangen! Je ontvangt van ons een e-mail met Track & Trace code wanneer wij jouw pakket naar de vervoerder hebben verzonden.", emailType: "order" },
+            {
+              attempts: 3, // Retry up to 3 times in case of failure
+              backoff: 5000, // Retry with a delay of 5 seconds
+            }
+          )
+          await emailQueue.add(
+            { orderData, title: `${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name} placed a order #..${orderData._id.toString().slice(-5)} value ${orderData.total} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order delivery at ${orderData.metadata._delivery_date}`, emailType: "orderOwner" },
+            {
+              attempts: 3, // Retry up to 3 times in case of failure
+              backoff: 5000, // Retry with a delay of 5 seconds
+            }
+          )
+        }
+        );
+        // Fetch data from SendCloud API
+        const response = await fetch(url, options);
+
+        // Handle response
+        if (!response.ok) {
+          // Log and handle HTTP errors
+          const errorText = await response.text();
+          console.log(errorText)
+        }
+        await response.json();
+
+        // Update the order in your database
+        const productsCollection = getDB().collection('products');
+
+        // Build bulk operations
+        const bulkOperations = orderData.items.flatMap((item) => {
+          const productName = item.order_item_name; // Name of the product
+          const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
+
+          // Check if the item is a bundle
+          if (item.meta._asnp_wepb_items) {
+            // Parse `_asnp_wepb_items` to get product IDs and quantities
+            const bundleComponents = item.meta._asnp_wepb_items.split(',').map((component) => {
+              const [productId, quantity] = component.split(':').map(Number);
+              return { productId, quantity: quantity * 1 };
+            });
+
+            // Create operations for each bundle component
+            return bundleComponents.map((component) => ({
+              updateOne: {
+                filter: {
+                  productId: component.productId, // Filter by product ID
+                  $expr: { $gte: [{ $toInt: "$metadata._stock" }, component.quantity] }, // Ensure sufficient stock
+                },
+                update: [
+                  {
+                    $set: {
+                      "metadata._stock": {
+                        $toString: {
+                          $subtract: [{ $toInt: "$metadata._stock" }, component.quantity],
+                        },
+                      },
+                      "metadata.total_sales": {
+                        $toString: {
+                          $add: [{ $toInt: "$metadata.total_sales" }, component.quantity],
+                        },
+                      },
+
+                    },
+                  },
+                ],
+              },
+            }));
+          } else if (item.meta._cartstamp) {
+            const cartstamp = Object.values(unserialize(item.meta._cartstamp));
+            // Create operations for each product in the _cartstamp
+            return cartstamp.map((product) => ({
+              updateOne: {
+                filter: {
+                  productId: parseInt(product.product_id), // Filter by product ID
+                  $expr: { $gte: [{ $toInt: "$metadata._stock" }, parseInt(product.bp_min_qty)] }, // Ensure sufficient stock
+                },
+                update: [
+                  {
+                    $set: {
+                      "metadata._stock": {
+                        $toString: {
+                          $subtract: [{ $toInt: "$metadata._stock" }, parseInt(product.bp_min_qty) * quantityToReduce],
+                        },
+                      },
+                      "metadata.total_sales": {
+                        $toString: {
+                          $add: [{ $toInt: "$metadata.total_sales" }, parseInt(product.bp_min_qty) * quantityToReduce],
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            }));
+          } else {
+            // If it's a single product
+            return {
+              updateOne: {
+                filter: {
+                  name: productName,
+                  $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
+                },
+                update: [
+                  {
+                    $set: {
+                      "metadata._stock": {
+                        $toString: {
+                          $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce],
+                        },
+                      },
+                      "metadata.total_sales": {
+                        $toString: {
+                          $add: [{ $toInt: "$metadata.total_sales" }, quantityToReduce],
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            };
+          }
+        });
+        const usersCollection = getDB().collection('users');
+        const user = await usersCollection.findOne({ _id: new ObjectId(orderData.user_id) });
+        if (user) {
+          // Add points to user account
+
+          const updatedMoneySpent = (parseFloat(user.metadata._money_spent) || 0) + parseFloat(orderData.total);
+          await usersCollection.updateOne(
+            { _id: new ObjectId(orderData.user_id) },
+            { $set: { "metadata._money_spent": updatedMoneySpent.toString() } }
+          );
+        }
+        //update coupons and redeem points
+        const { discountsData } = orderData.metadata; // Assuming couponCode and userId are sent in the request body
+        const couponCode = discountsData?.code;
+        const redeemPoints = discountsData?.redeemPoints;
+        if (couponCode) {
+          const couponsCollection = getDB().collection('coupons');
+          const coupon = await couponsCollection.findOne({ code: couponCode, status: 'publish' });
+          if (coupon) {
+            // Update coupon usage count
+            const updatedUsageCount = (parseInt(coupon.usageCount) || 0) + 1;
+            await couponsCollection.updateOne(
+              { _id: new ObjectId(coupon._id) },
+              { $set: { usageCount: updatedUsageCount } }
+            );
+            //update coupon totalDiscounts
+            var updatedTotalDiscounts = parseFloat(coupon.totalDiscount) + (parseFloat(orderData.metadata._cart_discount) || 0);
+
+            await couponsCollection.updateOne(
+              { _id: new ObjectId(coupon._id) },
+              { $set: { totalDiscount: parseFloat(updatedTotalDiscounts).toFixed(2) } }
+            );
+            //update coupons users
+            await couponsCollection.updateOne(
+              { _id: new ObjectId(coupon._id) }, // Find the coupon by ID
+              {
+                $push: {
+                  usageLogs: {
+                    orderId: orderData._id, // Get the orderId from the request body
+                    customerId: orderData.user_id,   // Use the userId from the authenticated user
+                    discountAmount: orderData.metadata._cart_discount, // Amount from the coupon
+                    usageDate: new Date()     // Current date and time
+                  }
+                }
+              }
+            );
+
+          }
+        }
+        if (user) {
+          // Deduct points from user account
+          const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + parseInt(orderData.total) - redeemPoints;
+          await usersCollection.updateOne(
+            { _id: new ObjectId(orderData.user_id) },
+            { $set: { "metadata.woocommerce_reward_points": parseInt(updatedPoints).toString() } }
+          );
+
+
+        }
+        //update stock action
+        await productsCollection.bulkWrite(bulkOperations);
+
+
+
+
+      
+      return res.status(200).json({
+        message: 'Order created successfully',
+        paymentUrl:`${process.env.FRONTEND_URI}/payment-success?coupon=true`,
+
+      });
+    }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
 
@@ -121,6 +367,7 @@ exports.createOrder = async (req, res) => {
     // If the payment is not through Pay.nl, assume another payment method
 
   } catch (error) {
+    console.log(error)
     res.status(400).json({ message: 'Error creating order', error: error.message });
   }
 
@@ -148,7 +395,8 @@ exports.checkPayment = async (req, res) => {
         data: {},
         country: orderData.metadata._shipping_country,
         shipment: {
-          id: orderData.metadata.deliveryMethod
+          // id: orderData.metadata.deliveryMethod
+          id:8
         },
         weight: orderData.totalWeight || 1.000,
         order_number: orderData._id,
@@ -261,7 +509,7 @@ exports.checkPayment = async (req, res) => {
               }
             )
             await emailQueue.add(
-              { orderData, title: `${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name} placed a order #..${orderData._id.toString().slice(-5)} value ${orderData.total} with ${orderData.metadata._payment_method_title} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order delivery at ${orderData.metadata._delivery_date}`, emailType: "orderOwner" },
+              { orderData, title: `${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name} placed a order #..${orderData._id.toString().slice(-5)} value ${orderData.total} with ${result.paymentDetails?.paymentProfileName || 'UNKNOWN'} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order delivery at ${orderData.metadata._delivery_date}`, emailType: "orderOwner" },
               {
                 attempts: 3, // Retry up to 3 times in case of failure
                 backoff: 5000, // Retry with a delay of 5 seconds

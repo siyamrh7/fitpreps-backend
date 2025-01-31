@@ -43,8 +43,7 @@ exports.createOrder = async (req, res) => {
           data: {},
           country: orderData.metadata._shipping_country,
           shipment: {
-            // id: orderData.metadata.deliveryMethod
-            id:8
+            id: orderData.metadata.deliveryMethod
           },
           weight: orderData.totalWeight || 1.000,
           order_number: orderData._id,
@@ -395,8 +394,7 @@ exports.checkPayment = async (req, res) => {
         data: {},
         country: orderData.metadata._shipping_country,
         shipment: {
-          // id: orderData.metadata.deliveryMethod
-          id:8
+          id: orderData.metadata.deliveryMethod
         },
         weight: orderData.totalWeight || 1.000,
         order_number: orderData._id,

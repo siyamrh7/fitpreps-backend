@@ -289,7 +289,7 @@ exports.createOrder = async (req, res) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
 
     const paymentData = {
-      amount: total || 1,               // Amount to charge (in Euros)
+      amount: total ,               // Amount to charge (in Euros)
       returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect after successful payment
       cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
       ipAddress: ip,                 // User's IP address
@@ -298,8 +298,13 @@ exports.createOrder = async (req, res) => {
       enduser: {
         emailAddress: req.body.metadata._billing_email,
         phoneNumber: req.body.metadata._billing_phone,
+        initials: req.body.metadata._billing_first_name,
+        lastName: req.body.metadata._billing_last_name,
 
       },
+      invoiceDate: new Date(),
+      deliveryDate: new Date(req.body.metadata._delivery_date),
+      
       address: {
         streetName: req.body.metadata._billing_address_1,
         houseNumber: req.body.metadata._billing_address_2,
@@ -313,17 +318,24 @@ exports.createOrder = async (req, res) => {
         zipCode: req.body.metadata._billing_postcode,
         city: req.body.metadata._billing_city,
         countryCode: req.body.metadata._billing_country,
-       
+        initials: req.body.metadata._billing_first_name,
+        lastName: req.body.metadata._billing_last_name,
     },
     products: req.body.items.map((item) => {
       return {
-       
         id: item.meta?._id,
         name: item.order_item_name,
         price: parseFloat(item.meta?._line_total).toFixed(2),
-        qty:item.meta?._qty
+        qty:item.meta?._qty,
+        type: "ARTICLE"
       }
-    })
+    }).concat({ 
+      id: '1',
+      name: "shipping",
+      price: (parseFloat(req.body.metadata._order_shipping)+parseFloat(req.body.metadata._order_shipping_tax)).toFixed(2),
+      qty: 1,
+      type: "SHIPPING"
+  })
    
     };
 
@@ -340,7 +352,7 @@ exports.createOrder = async (req, res) => {
             {
               $set: {
                 'metadata.transactionId': transactionId, // Adds or updates the transactionId in metadata
-                status: 'pending',  // Updates status to 'pending' (or awaiting_payment)
+                status: 'cancelled',  // Updates status to 'pending' (or awaiting_payment)
                 'metadata._customer_ip_address': ip,
               },
             }
@@ -458,7 +470,7 @@ exports.checkPayment = async (req, res) => {
               }
             ),
               await emailQueue.add(
-                { orderData, title: `${orderData.metadata._billing_first_name} has cancelled order #${orderData._id} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
+                { orderData, title: `${orderData.metadata._billing_first_name} has cancelled order #..${orderData._id.toString().slice(-5)} on Fitpreps`, description: `${orderData.metadata._billing_first_name} placed a new order`, emailType: "orderOwner" },
                 {
                   attempts: 3, // Retry up to 3 times in case of failure
                   backoff: 5000, // Retry with a delay of 5 seconds
@@ -469,17 +481,17 @@ exports.checkPayment = async (req, res) => {
           );
           console.log('Transaction is canceled');
         } else if (result.isBeingVerified()) {
-          paymentStatus = 'on-hold';
-          setImmediate(async () =>
-            // orderEmailController(orderData, "You payment in on hold!", "Your order is failed due to your payment. Here is your order summary! Please try again.")
-            await emailQueue.add(
-              { orderData, title: "You payment in on hold!", description: "Your order is failed due to your payment. Here is your order summary! Please try again.", emailType: "order" },
-              {
-                attempts: 3, // Retry up to 3 times in case of failure
-                backoff: 5000, // Retry with a delay of 5 seconds
-              }
-            )
-          );
+          paymentStatus = 'processing';
+          // setImmediate(async () =>
+          //   // orderEmailController(orderData, "You payment in on hold!", "Your order is failed due to your payment. Here is your order summary! Please try again.")
+          //   await emailQueue.add(
+          //     { orderData, title: "You payment in on hold!", description: "Your order is failed due to your payment. Here is your order summary! Please try again.", emailType: "order" },
+          //     {
+          //       attempts: 3, // Retry up to 3 times in case of failure
+          //       backoff: 5000, // Retry with a delay of 5 seconds
+          //     }
+          //   )
+          // );
           console.log('Transaction is being verified');
         }
 
@@ -496,7 +508,7 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if (result.isPaid() && orderData.status == "pending") {
+        if ((result.isBeingVerified() || result.isPaid()) && orderData.status == "cancelled") {
           setImmediate(async () => {
 
             await emailQueue.add(

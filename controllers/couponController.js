@@ -12,7 +12,6 @@ exports.createCoupon = async (req, res) => {
   }
 };
 
-// Get all coupons
 // exports.getAllCoupons = async (req, res) => {
 //   try {
 //     const couponsCollection = getDB().collection('coupons');
@@ -202,7 +201,7 @@ exports.getCouponByCode = async (req, res) => {
   try {
     const couponsCollection = getDB().collection('coupons');
     const { code } = req.params;
-    const coupon = await couponsCollection.findOne({ code });
+    const coupon = await couponsCollection.findOne({  code: { $regex: new RegExp(`^${code}$`, 'i') } });
     if (!coupon) {
       return res.status(404).json({ message: 'Coupon not found' });
     }
@@ -278,8 +277,10 @@ exports.validateCoupon = async (req, res) => {
   try {
     const couponsCollection = getDB().collection('coupons');
     const { code } = req.params;
-    const coupon = await couponsCollection.findOne({ code });
-    if (!coupon) {
+    const coupon = await couponsCollection.findOne({ 
+      code: { $regex: new RegExp(`^${code}$`, 'i') } // 'i' makes it case insensitive
+  });
+      if (!coupon) {
       return res.status(404).json({ message: 'Coupon not found' });
     }
 
@@ -331,7 +332,7 @@ exports.applyCoupon = async (req, res) => {
     const couponsCollection = getDB().collection('coupons');
 
     // Check if the coupon exists and is valid
-    const coupon = await couponsCollection.findOne({ code: couponCode });
+    const coupon = await couponsCollection.findOne({  code: { $regex: new RegExp(`^${couponCode}$`, 'i') } });
 
     if (!coupon) {
       return res.status(404).json({ message: 'Coupon not found' });

@@ -14,7 +14,7 @@ const updateCouponOnOrder = async (req, res, next) => {
     const couponsCollection = db.collection('coupons');
 
     // Fetch the coupon
-    const coupon = await couponsCollection.findOne({ code: couponCode, status: 'publish' });
+    const coupon = await couponsCollection.findOne({  code: { $regex: new RegExp(`^${couponCode}$`, 'i') }, status: 'publish' });
 
     if (!coupon) {
       return res.status(404).json({ error: 'Coupon not found or inactive' });

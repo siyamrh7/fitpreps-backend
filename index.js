@@ -12,8 +12,11 @@ const authRoutes = require('./routes/authRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const wishlistRoutes = require('./routes/wishlistRoutes');
 const trackingRoutes = require('./routes/trackingRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
+
 const uploadSingle = require('./middleware/uploadMiddleware'); // Import the Multer middleware
 const { contactController } = require('./controllers/contactController');
+
 const app = express();
 
 // Connect to MongoDB
@@ -36,7 +39,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/track-event', trackingRoutes);
-
+app.use("/webhook/sendcloud", webhookRoutes);
 // Email Sending Route with File Upload
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {

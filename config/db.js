@@ -4,7 +4,7 @@ let db;
 
 const connectDB = async () => {
   try {
-    const client = new MongoClient("mongodb+srv://siyam:siyam@fitpreps.q2yky.mongodb.net/?retryWrites=true&w=majority&appName=fitpreps", {
+    const client = new MongoClient(process.env.MONGO_URI, {
       serverApi: {
         version: ServerApiVersion.v1,
         strict: false,

@@ -918,14 +918,26 @@ exports.getAllOrders = async (req, res) => {
 
     // Filter by search query for name or phone
     if (searchQuery) {
-      const regex = new RegExp(searchQuery, "i"); // Case-insensitive regex for search
+      const regex = new RegExp(searchQuery, "i"); // Case-insensitive regex
+      const isFullId = /^[0-9a-fA-F]{24}$/.test(searchQuery); // Check if it's a full ObjectId
+    
       query.$or = [
         { "metadata._shipping_first_name": regex },
         { "metadata._shipping_last_name": regex },
         { "metadata._shipping_phone": regex },
       ];
+    
+      if (isFullId) {
+        // If the search query is a full ObjectId, search directly
+        query.$or.push({ _id: new ObjectId(searchQuery) });
+      } else {
+        // Convert `_id` to a string inside MongoDB and search
+        query.$or.push({
+          $expr: { $regexMatch: { input: { $toString: "$_id" }, regex: searchQuery, options: "i" } }
+        });
+      }
     }
-
+    
     // Fetch total count of orders matching the query
     const totalOrders = await ordersCollection.countDocuments(query);
 

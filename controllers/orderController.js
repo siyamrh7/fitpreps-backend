@@ -6,6 +6,7 @@ const { unserialize } = require('php-serialize');
 // Import Pay.nl SDK
 var Paynl = require('paynl-sdk');
 const emailQueue = require('./emailQueue');
+const addUserToKlaviyo = require('./klaviyoController');
 
 // Configure Pay.nl with your credentials
 Paynl.Config.setApiToken(process.env.PAY_NL_API_TOKEN);   // Replace with your API token
@@ -22,6 +23,10 @@ exports.createOrder = async (req, res) => {
     const ordersCollection = getDB().collection('orders');
 
     const results = await ordersCollection.insertOne(req.body);
+
+    // Add user to Klaviyo
+    await addUserToKlaviyo(req.body.metadata._billing_email, req.body.metadata._billing_first_name, req.body.metadata._billing_last_name,req.body.metadata._billing_phone,req.body.metadata._billing_city,req.body.metadata._billing_country);
+
     if (total == 0) {
       console.log(total)
       const username = process.env.SENDCLOUD_API_USERNAME;

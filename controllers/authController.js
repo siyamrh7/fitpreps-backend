@@ -4,7 +4,8 @@ const { getDB } = require('../config/db');
 var hasher = require('wordpress-hash-node');
 const { unserialize } = require('php-serialize');
 const crypto = require('crypto');
-const emailQueue = require('./emailQueue')
+const emailQueue = require('./emailQueue');
+const addUserToKlaviyo = require('./klaviyoController');
 // Controller to handle user registration
 exports.register = async (req, res) => {
   try {
@@ -37,6 +38,8 @@ exports.register = async (req, res) => {
           }
         )
       );
+      await addUserToKlaviyo(email, metadata.first_name, metadata.last_name);
+
     }
     // Insert the user into the database
     await usersCollection.insertOne(user);

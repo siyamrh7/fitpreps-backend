@@ -13,6 +13,7 @@ exports.register = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+
     // Get the MongoDB collection
     const usersCollection = getDB().collection('users');
 

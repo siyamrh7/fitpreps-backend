@@ -28,14 +28,14 @@ const createOrUpdateKlaviyoProfile = async (email, firstName, lastName,phone,cit
             })
         });
 
-        const data = await response.json();
-        if (response.ok) {
-            console.log('Profile created/updated:', data);
-            return data.data.id; // Return the profile ID
-        } else {
-            console.error('Error creating/updating profile:', data);
-            return null;
-        }
+        // const data = await response.json();
+        // if (response.ok) {
+        //     return data.data.id; // Return the profile ID
+        // } else {
+        //     console.error('Error creating/updating profile:', data);
+        //     return null;
+        // }
+        return null
     } catch (error) {
         console.error('Error:', error.message);
         return null;
@@ -43,10 +43,8 @@ const createOrUpdateKlaviyoProfile = async (email, firstName, lastName,phone,cit
 };
 
 const addUserToKlaviyo = async (email, firstName, lastName,phone,city,country) => {
-    const profileId = await createOrUpdateKlaviyoProfile(email, firstName, lastName,phone,city,country);
-    if (profileId) {
-        console.log('Profile successfully created and will be added to the segment automatically.');
-    }
+    await createOrUpdateKlaviyoProfile(email, firstName, lastName,phone,city,country);
+ 
 };
 
 

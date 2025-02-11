@@ -20,23 +20,39 @@ exports.getAllUsers = async (req, res) => {
   const usersCollection = getDB().collection('users');
 
   const page = parseInt(req.query.page) || 1;
-  const limit = 25; // You can adjust this number as needed
+  const limit = 25; // Number of users per page
   const skip = (page - 1) * limit;
 
-  try {
-    // Fetching users with pagination
-    const customers = await usersCollection.find()
-      .skip(skip)
-      .limit(limit)
-      .toArray(); // Convert the cursor to an array
+  const searchTerm = req.query.search || ''; // Get search term from query, default to empty string if not provided
+  const searchRegex = new RegExp(searchTerm, 'i'); // Case-insensitive regex for search
 
-    // Count the total number of users for pagination
-    const totalCount = await usersCollection.countDocuments();
+  try {
+    // Fetch users with pagination and search filter
+    const customers = await usersCollection.find({
+      $or: [
+        { 'metadata.first_name': { $regex: searchRegex } },
+        { 'metadata.last_name': { $regex: searchRegex } },
+        { 'email': { $regex: searchRegex } } // Search by 'name' field
+      ]
+    })
+    .skip(skip)
+    .limit(limit)
+    .toArray(); // Convert the cursor to an array
+
+    // Count the total number of matching users for pagination
+    const totalCount = await usersCollection.countDocuments({
+      $or: [
+        { 'metadata.first_name': { $regex: searchRegex } },
+        { 'metadata.last_name': { $regex: searchRegex } },
+        { 'email': { $regex: searchRegex } }
+      ]
+    });
     const totalPages = Math.ceil(totalCount / limit);
 
     res.json({
       customers,
       totalPages,
+      currentPage: page,
     });
   } catch (err) {
     console.error("Error fetching users:", err);
@@ -186,5 +202,60 @@ exports.updatePoint = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error updating point', error });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params; // Get userId from authenticated request
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const usersCollection = getDB().collection('users');
+
+    // Delete the user by ID
+    const result = await usersCollection.deleteOne({ _id: new ObjectId(userId) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'User not found or already deleted' });
+    }
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ message: 'Error deleting user', error });
+  }
+};
+
+exports.updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params; // Get userId from authenticated request
+    let updates = { ...req.body }; // Create a copy of the request body
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No data to update' });
+    }
+    delete updates._id;
+
+    const usersCollection = getDB().collection('users');
+
+    // Update user data
+    const result = await usersCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: updates }
+    )
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({ message: 'User updated successfully' });
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating user', error });
   }
 };

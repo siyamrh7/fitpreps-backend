@@ -140,36 +140,78 @@ exports.getAllProducts = async (req, res) => {
 };
 
 
+// exports.getSingleProduct = async (req, res) => {
+//   try {
+//     const { productName } = req.params; // Assuming you pass the ID as a parameter in the URL
+//     const productsCollection = getDB().collection('products');
+//     // Input from the URL
+
+//     // Normalize the input by replacing spaces/hyphens and trimming
+
+//     // Create a regex to match the normalized name
+
+//     const regexPattern = new RegExp(productName.replace(/-/g, '.*'), 'i'); // Replace hyphens with '.*' and make case-insensitive
+
+//     // Convert productId to ObjectId for querying
+//     const product = await productsCollection.findOne({
+//       "name": regexPattern, // Case-insensitive and more flexible
+//       "status": "publish"
+//     })
+
+
+//     if (!product) {
+//       return res.status(404).json({ message: 'Product not found' });
+//     }
+
+//     res.status(200).json(product); // Send the found product as a response
+//   } catch (error) {
+//     console.error('Error fetching product:', error);
+//     res.status(500).json({ message: 'Error fetching product', error });
+//   }
+// };
 exports.getSingleProduct = async (req, res) => {
   try {
     const { productName } = req.params; // Assuming you pass the ID as a parameter in the URL
     const productsCollection = getDB().collection('products');
+
     // Input from the URL
-
     // Normalize the input by replacing spaces/hyphens and trimming
-
-    // Create a regex to match the normalized name
-
-    const regexPattern = new RegExp(productName.replace(/-/g, '.*'), 'i'); // Replace hyphens with '.*' and make case-insensitive
-
-    // Convert productId to ObjectId for querying
-    const product = await productsCollection.findOne({
-      "name": regexPattern, // Case-insensitive and more flexible
+    
+    // Create regexPattern1 to handle hyphens, spaces, and en-dashes
+    const regexPattern1 = new RegExp(
+      "^" + productName
+        .replace(/-/g, "[-\\s–]*") + "$", // Match hyphens, spaces, or en-dashes
+      "i" // Case-insensitive
+    );
+    
+    // Create regexPattern2 to allow hyphens to match any character in between words (more flexible)
+    const regexPattern2 = new RegExp(productName.replace(/-/g, '.*'), 'i'); // Replace hyphens with '.*' and make case-insensitive
+    
+    // First, try searching using regexPattern1
+    let product = await productsCollection.findOne({
+      "name": regexPattern1,
       "status": "publish"
-    })
-
-
+    });
+    
+    if (!product) {
+      // If no product found, try searching using regexPattern2
+      product = await productsCollection.findOne({
+        "name": regexPattern2,
+        "status": "publish"
+      });
+    }
+    
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
-
+    
     res.status(200).json(product); // Send the found product as a response
+    
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({ message: 'Error fetching product', error });
   }
 };
-
 exports.deleteProductById = async (req, res) => {
   try {
     const productsCollection = getDB().collection('products');

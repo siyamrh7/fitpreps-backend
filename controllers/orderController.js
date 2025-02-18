@@ -50,7 +50,7 @@ exports.createOrder = async (req, res) => {
           shipment: {
             id: orderData.metadata.deliveryMethod
           },
-          weight: orderData.totalWeight || 1.000,
+          weight:  1.000,
           order_number: orderData._id,
           total_order_value_currency: "EUR",
           total_order_value: orderData.total,
@@ -412,7 +412,7 @@ exports.checkPayment = async (req, res) => {
         shipment: {
           id: orderData.metadata.deliveryMethod
         },
-        weight: orderData.totalWeight || 1.000,
+        weight:  1.000,
         order_number: orderData._id,
         total_order_value_currency: "EUR",
         total_order_value: orderData.total,
@@ -1093,6 +1093,46 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
+exports.updatePackingSlipStatus = async (req, res) => {
+  try {
+    const { orderIds ,packingSlipDownloaded} = req.body.data; // Array of order IDs from the request body
+
+    // Validate that orderIds is an array and not empty
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ message: 'Order IDs are required and must be an array' });
+    }
+
+    // Validate that packingSlipDownloaded is either 'true' or 'false'
+    if (packingSlipDownloaded !== 'true' && packingSlipDownloaded !== 'false') {
+      return res.status(400).json({ message: 'packingSlipDownloaded must be either true or false' });
+    }
+
+    const updatedValue = packingSlipDownloaded === 'true';
+
+    // Ensure all IDs are valid ObjectIds
+    const invalidIds = orderIds.filter(id => !ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ message: 'Invalid order ID(s): ' + invalidIds.join(', ') });
+    }
+
+    const ordersCollection = getDB().collection('orders');
+
+    // Update the packingSlipDownloaded field of the orders by their IDs
+    const result = await ordersCollection.updateMany(
+      { _id: { $in: orderIds.map(id => new ObjectId(id)) } },
+      { $set: { packingSlipDownloaded: updatedValue } } // Set the new value
+    );
+    // If no orders were updated, return a message
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'No orders found to update' });
+    }
+
+    res.status(200).json({ message: `${result.modifiedCount} orders packing slip updated.` });
+  } catch (error) {
+    console.error('Error updating packing slip status:', error);
+    res.status(500).json({ message: 'Error updating packing slip status', error: error.message });
+  }
+};
 
 
 

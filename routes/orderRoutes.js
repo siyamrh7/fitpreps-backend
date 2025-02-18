@@ -8,6 +8,7 @@ router.post('/create', orderController.createOrder);
 router.get('/checkpayment/:transactionId', orderController.checkPayment);
 router.delete('/orders',authenticateAdmin, orderController.deleteOrders);
 router.put('/status',authenticateAdmin, orderController.updateOrderStatus);
+router.put('/packingstatus',authenticateAdmin, orderController.updatePackingSlipStatus);
 
 router.get('/',authenticateAdmin,  orderController.getAllOrders);
 router.get('/order/:id',authenticateAdmin,  orderController.getOrderById);

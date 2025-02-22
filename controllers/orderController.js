@@ -25,10 +25,10 @@ exports.createOrder = async (req, res) => {
     const results = await ordersCollection.insertOne(req.body);
 
     // Add user to Klaviyo
-    await addUserToKlaviyo(req.body.metadata._billing_email, req.body.metadata._billing_first_name, req.body.metadata._billing_last_name,req.body.metadata._billing_phone,req.body.metadata._billing_city,req.body.metadata._billing_country);
+    await addUserToKlaviyo(req.body.metadata._billing_email, req.body.metadata._billing_first_name, req.body.metadata._billing_last_name, req.body.metadata._billing_phone, req.body.metadata._billing_city, req.body.metadata._billing_country);
 
     if (total == 0) {
-      console.log(total)
+      
       const username = process.env.SENDCLOUD_API_USERNAME;
       const password = process.env.SENDCLOUD_API_PASSWORD;
 
@@ -50,7 +50,7 @@ exports.createOrder = async (req, res) => {
           shipment: {
             id: orderData.metadata.deliveryMethod
           },
-          weight:  1.000,
+          weight: 1.000,
           order_number: orderData._id,
           total_order_value_currency: "EUR",
           total_order_value: orderData.total,
@@ -93,7 +93,7 @@ exports.createOrder = async (req, res) => {
           $set: {
             'metadata.transactionId': "No Transaction", // Adds or updates the transactionId in metadata
             status: 'processing',  // Updates status to 'pending' (or awaiting_payment)
-            'metadata._customer_ip_address': req.ip,
+            'metadata._customer_ip_address': req.body.ipAddress,
             updatedAt: new Date(), // Updates the updatedAt field with the current timestamp
           },
         }
@@ -290,66 +290,89 @@ exports.createOrder = async (req, res) => {
       });
     }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
+    const ip =req.body.ipAddress || req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
 
-    const paymentData = {
-      amount: total,               // Amount to charge (in Euros)
-      returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect after successful payment
-      cancelUrl: `${process.env.FRONTEND_URI}/payment-success/`,  // Redirect if payment is canceled
-      ipAddress: ip,                 // User's IP address
-      description: `Order: #..${results.insertedId.toString().slice(-5)}`,
+    
 
-      enduser: {
-        emailAddress: req.body.metadata._billing_email,
-        phoneNumber: req.body.metadata._billing_phone,
-        initials: req.body.metadata._billing_first_name,
-        lastName: req.body.metadata._billing_last_name,
-
+   
+    const options = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.PAY_NL_API_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      invoiceDate: new Date(),
-      deliveryDate: new Date(req.body.metadata._delivery_date),
-
-      address: {
-        streetName: req.body.metadata._billing_address_1,
-        houseNumber: req.body.metadata._billing_address_2,
-        zipCode: req.body.metadata._billing_postcode,
-        city: req.body.metadata._billing_city,
-        countryCode: req.body.metadata._billing_country
-      },
-      invoiceAddress: {
-        streetName: req.body.metadata._billing_address_1,
-        houseNumber: req.body.metadata._billing_address_2,
-        zipCode: req.body.metadata._billing_postcode,
-        city: req.body.metadata._billing_city,
-        countryCode: req.body.metadata._billing_country,
-        initials: req.body.metadata._billing_first_name,
-        lastName: req.body.metadata._billing_last_name,
-      },
-      products: req.body.items.map((item) => {
-        return {
-          id: item.meta?._id,
-          name: item.order_item_name,
-          price: parseFloat(item.meta?._line_total).toFixed(2),
-          qty: item.meta?._qty,
-          type: "ARTICLE"
-        }
-      }).concat({
-        id: '1',
-        name: "shipping",
-        price: (parseFloat(req.body.metadata._order_shipping) + parseFloat(req.body.metadata._order_shipping_tax)).toFixed(2),
-        qty: 1,
-        type: "SHIPPING"
+      body: JSON.stringify({
+        amount: {value: total * 100, currency: 'EUR'},
+        paymentMethod: {input: {countryCode: req.body.metadata._billing_country}, id: null},
+        integration: {test: false},
+        optimize: {shippingAddress: true, billingAddress: true},
+        customer: {
+          company: {
+            name: req.body.metadata._billing_company,
+            country: req.body.metadata._billing_country,
+            cocNumber: req.body.metadata._billing_company_kvk,
+            vatNumber: req.body.metadata._billing_company_vat 
+          },
+          email: req.body.metadata._billing_email,
+          firstName: req.body.metadata._billing_first_name,
+          lastName: req.body.metadata._billing_last_name,
+          phone: req.body.metadata._billing_phone,
+          ipAddress: req.body.ipAddress || ip
+        },
+        order: {
+          deliveryAddress: {
+            firstName: req.body.metadata._shipping_first_name,
+            lastName: req.body.metadata._shipping_last_name,
+            streetNumberExtension: req.body.metadata._shipping_address_2,
+            zipCode: req.body.metadata._shipping_postcode,
+            city: req.body.metadata._shipping_city,
+            country: req.body.metadata._shipping_country,
+            street: req.body.metadata._shipping_address_1,
+            streetNumber: req.body.metadata._shipping_address_2,
+            region: req.body.metadata._shipping_country
+          },
+          invoiceAddress: {
+            firstName: req.body.metadata._billing_first_name,
+            lastName: req.body.metadata._billing_last_name,
+            streetNumberExtension: req.body.metadata._billing_address_2,
+            zipCode: req.body.metadata._billing_postcode,
+            city: req.body.metadata._billing_city,
+            country: req.body.metadata._billing_country,
+            street: req.body.metadata._billing_address_1,
+            streetNumber: req.body.metadata._billing_address_2,
+            region: req.body.metadata._billing_country
+          },
+          countryCode: req.body.metadata._billing_country,
+          invoiceDate: new Date(),
+          deliveryDate: new Date(req.body.metadata._delivery_date),
+          products: req.body.items.map((item) => {
+            return {
+              id: item.meta?._id,
+              description: item.order_item_name,
+              price: {value: (parseFloat(item.meta?._line_total)/parseInt(item.meta?._qty) * 100).toFixed(2), currency: 'EUR'},
+              quantity: item.meta?._qty,
+              type: "ARTICLE",
+              vatPercentage: 9
+            }
+          })
+          
+        },
+        serviceId: process.env.PAY_NL_SERVICE_ID,
+        description: `Order: #..${results.insertedId.toString().slice(-5)}`,
+        returnUrl: `${process.env.FRONTEND_URI}/payment-success/`,
+        exchangeUrl: `https://back.fitpreps.nl/api/orders/paynl`
       })
-
     };
+    
+    const response = await fetch('https://connect.pay.nl/v1/orders', options);
 
-    // Start the payment transaction using Pay.nl SDK
-    Paynl.Transaction.start(paymentData)
-      .subscribe(
-        async function (result) {
+    const data = await response.json();
+    if (data) {
+     
+            
           // Successfully started payment
-          const paymentUrl = result.paymentURL;
-          const transactionId = result.transactionId;
+          const paymentUrl = data.links.redirect;
+          const transactionId = data.orderId;
           // Update the order with payment URL and transactionId
           await ordersCollection.updateOne(
             { _id: results.insertedId },
@@ -360,25 +383,11 @@ exports.createOrder = async (req, res) => {
                 'metadata._customer_ip_address': ip,
               },
             }
-          );
-
-
-          // Send the payment URL back to the client for completion
-          return res.status(200).json({
-            message: 'Order created successfully, proceed to payment',
-            paymentUrl,
-            transactionId,
-          });
-        },
-        async function (error) {
-          // If there was an error in the payment creation process
-          console.error('Error initiating payment:', error);
-          // Update the order status and send error response
-          return res.status(201).json({ message: 'Payment Failed', error });
-
-        }
-      );
-
+          )
+      res.json({ paymentUrl, message: 'Order created successfully, proceed to payment',transactionId});
+    } else {
+      res.status(400).json({ message: 'Error creating order', error: error.message });
+    }
     // If the payment is not through Pay.nl, assume another payment method
 
   } catch (error) {
@@ -412,7 +421,7 @@ exports.checkPayment = async (req, res) => {
         shipment: {
           id: orderData.metadata.deliveryMethod
         },
-        weight:  1.000,
+        weight: 1.000,
         order_number: orderData._id,
         total_order_value_currency: "EUR",
         total_order_value: orderData.total,
@@ -445,7 +454,7 @@ exports.checkPayment = async (req, res) => {
     // Fetch transaction status from Pay.nl
     Paynl.Transaction.get(transactionId).subscribe(
       async (result) => {
-        let paymentStatus = 'pending';
+        let paymentStatus = 'cancelled';
         let paymentMethod = 'UNKNOWN';
 
         // Determine the payment status
@@ -484,8 +493,11 @@ exports.checkPayment = async (req, res) => {
           // }
           // );
           console.log('Transaction is canceled');
-        } else if (result.isBeingVerified()) {
+        }else if (result.isAuthorized()) {
           paymentStatus = 'processing';
+        } else if (result.isBeingVerified()) {
+          paymentStatus = 'cancelled';
+
           // setImmediate(async () =>
           //   // orderEmailController(orderData, "You payment in on hold!", "Your order is failed due to your payment. Here is your order summary! Please try again.")
           //   await emailQueue.add(
@@ -496,6 +508,7 @@ exports.checkPayment = async (req, res) => {
           //     }
           //   )
           // );
+         
           console.log('Transaction is being verified');
         }
 
@@ -512,7 +525,10 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-        if ((result.isBeingVerified() || result.isPaid()) && orderData.status == "cancelled") {
+      
+
+        if ((result.isPaid() || result.isAuthorized()) && orderData.status == "cancelled") {
+          
           setImmediate(async () => {
 
             await emailQueue.add(
@@ -698,12 +714,13 @@ exports.checkPayment = async (req, res) => {
 
           }
           //update stock action
-          const results = await productsCollection.bulkWrite(bulkOperations);
+           await productsCollection.bulkWrite(bulkOperations);
 
 
 
 
         }
+        
         // Send response
         res.status(200).json({
           message: 'Payment status updated successfully',
@@ -925,13 +942,13 @@ exports.getAllOrders = async (req, res) => {
     if (searchQuery) {
       const regex = new RegExp(searchQuery, "i"); // Case-insensitive regex
       const isFullId = /^[0-9a-fA-F]{24}$/.test(searchQuery); // Check if it's a full ObjectId
-    
+
       query.$or = [
         { "metadata._shipping_first_name": regex },
         { "metadata._shipping_last_name": regex },
         { "metadata._shipping_phone": regex },
       ];
-    
+
       if (isFullId) {
         // If the search query is a full ObjectId, search directly
         query.$or.push({ _id: new ObjectId(searchQuery) });
@@ -942,7 +959,7 @@ exports.getAllOrders = async (req, res) => {
         });
       }
     }
-    
+
     // Fetch total count of orders matching the query
     const totalOrders = await ordersCollection.countDocuments(query);
 
@@ -1095,7 +1112,7 @@ exports.updateOrderStatus = async (req, res) => {
 
 exports.updatePackingSlipStatus = async (req, res) => {
   try {
-    const { orderIds ,packingSlipDownloaded} = req.body.data; // Array of order IDs from the request body
+    const { orderIds, packingSlipDownloaded } = req.body.data; // Array of order IDs from the request body
 
     // Validate that orderIds is an array and not empty
     if (!Array.isArray(orderIds) || orderIds.length === 0) {

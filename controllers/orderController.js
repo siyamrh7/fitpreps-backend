@@ -458,7 +458,7 @@ exports.checkPayment = async (req, res) => {
         let paymentMethod = 'UNKNOWN';
 
         // Determine the payment status
-        if (result.isPaid()) {
+        if (result.isPaid() && orderData.status == "cancelled") {
           paymentStatus = 'processing';
           // Fetch data from SendCloud API
           // const response = await fetch(url, options);
@@ -493,7 +493,7 @@ exports.checkPayment = async (req, res) => {
           // }
           // );
           console.log('Transaction is canceled');
-        }else if (result.isAuthorized()) {
+        }else if (result.isAuthorized() && orderData.status == "cancelled") {
           paymentStatus = 'processing';
         } else if (result.isBeingVerified()) {
           paymentStatus = 'cancelled';

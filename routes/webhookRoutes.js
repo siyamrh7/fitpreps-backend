@@ -5,7 +5,8 @@ const { ObjectId } = require('mongodb');
 
 router.post('/', async(req, res) => {
     try {
-        if(req.body.action == "parcel_status_changed" && req.body.parcel.status.id==1000) {   
+      
+        if(req.body.action == "parcel_status_changed" && req.body.parcel.status.id == 1000) {   
             
             const ordersCollection = getDB().collection('orders');
         

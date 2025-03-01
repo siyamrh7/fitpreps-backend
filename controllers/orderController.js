@@ -454,7 +454,7 @@ exports.checkPayment = async (req, res) => {
     // Fetch transaction status from Pay.nl
     Paynl.Transaction.get(transactionId).subscribe(
       async (result) => {
-        let paymentStatus = 'cancelled';
+        let paymentStatus = orderData.status;
         let paymentMethod = 'UNKNOWN';
 
         // Determine the payment status

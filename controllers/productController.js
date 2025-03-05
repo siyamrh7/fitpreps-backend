@@ -127,6 +127,7 @@ exports.getAllProducts = async (req, res) => {
         producten_specificaties_data: 1,
         voedingswaarde_data: 1,
         _yith_wcpb_bundle_data: 1,
+        _freezer: 1
       },
     };
 

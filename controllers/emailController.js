@@ -502,7 +502,7 @@ exports.orderEmailController = async (orderData, title, description) => {
   <!-- Content -->
   <div style="padding: 20px;">
     <p style="margin: 0; font-size: 16px;">
-      Beste ${orderData.metadata._billing_first_name}, ${title} <br><br>
+      Beste Naam: ${orderData.metadata._billing_first_name}, ${title} <br><br>
       ${description}
     </p>
     
@@ -574,6 +574,13 @@ exports.orderEmailController = async (orderData, title, description) => {
         {
           emailAddress: {
             address: orderData.metadata._billing_email,
+          },
+        },
+      ],
+      bccRecipients: [  // Add BCC here
+        {
+          emailAddress: {
+            address: 'fitpreps.nl+8a098fd01d@invite.trustpilot.com', // Trustpilot BCC email
           },
         },
       ],

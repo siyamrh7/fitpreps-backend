@@ -16,7 +16,7 @@ router.get('/order/:id',authenticateAdmin,  orderController.getOrderById);
 router.get('/order', authenticateJWT, orderController.getOrder);
 router.get('/analytics',authenticateAdmin,  orderController.getAnalytics);
 router.get('/getshipping', orderController.getShippingMethods);
-
+// router.get('/payment/:id', orderController.getPaynlStatus);
 
 const BASE_URL = 'http://addressapi.nl/wp-json/postcode-information/v1/info';
 

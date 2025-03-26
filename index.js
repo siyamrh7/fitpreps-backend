@@ -14,6 +14,7 @@ const wishlistRoutes = require('./routes/wishlistRoutes');
 const trackingRoutes = require('./routes/trackingRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const blogRoutes = require('./routes/blogRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 const uploadSingle = require('./middleware/uploadMiddleware'); // Import the Multer middleware
 const { contactController } = require('./controllers/contactController');
@@ -25,6 +26,10 @@ connectDB();
 
 // Middleware
 app.use(cors());
+// For form-urlencoded data (what Mollie typically sends)
+app.use(express.urlencoded({ extended: true }));
+
+// For JSON data
 app.use(bodyParser.json());
 app.set('trust proxy', true);
 
@@ -40,6 +45,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 app.use('/api/track-event', trackingRoutes);
 app.use("/webhook/sendcloud", webhookRoutes);

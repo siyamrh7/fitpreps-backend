@@ -28,7 +28,7 @@ exports.createOrder = async (req, res) => {
     await addUserToKlaviyo(req.body.metadata._billing_email, req.body.metadata._billing_first_name, req.body.metadata._billing_last_name, req.body.metadata._billing_phone, req.body.metadata._billing_city, req.body.metadata._billing_country);
 
     if (total == 0) {
-      
+
       const username = process.env.SENDCLOUD_API_USERNAME;
       const password = process.env.SENDCLOUD_API_PASSWORD;
 
@@ -277,8 +277,8 @@ exports.createOrder = async (req, res) => {
 
       }
       //update stock action
-      await productsCollection.bulkWrite(bulkOperations);
-
+      const modifiedProducts = await productsCollection.bulkWrite(bulkOperations);
+      console.log(modifiedProducts);
 
 
 
@@ -290,11 +290,11 @@ exports.createOrder = async (req, res) => {
       });
     }
     // Step 3: Process Payment via Pay.nl (if paymentMethod is Pay.nl)
-    const ip =req.body.ipAddress || req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
+    const ip = req.body.ipAddress || req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip || '127.0.0.1';
 
-    
 
-   
+
+
     const options = {
       method: 'POST',
       headers: {
@@ -302,16 +302,16 @@ exports.createOrder = async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        amount: {value: total * 100, currency: 'EUR'},
-        paymentMethod: {input: {countryCode: req.body.metadata._billing_country}, id: null},
-        integration: {test: false},
-        optimize: {shippingAddress: true, billingAddress: true},
+        amount: { value: total * 100, currency: 'EUR' },
+        paymentMethod: { input: { countryCode: req.body.metadata._billing_country }, id: null },
+        integration: { test: false },
+        optimize: { shippingAddress: true, billingAddress: true },
         customer: {
           company: {
             name: req.body.metadata._billing_company,
             country: req.body.metadata._billing_country,
             cocNumber: req.body.metadata._billing_company_kvk,
-            vatNumber: req.body.metadata._billing_company_vat 
+            vatNumber: req.body.metadata._billing_company_vat
           },
           email: req.body.metadata._billing_email,
           firstName: req.body.metadata._billing_first_name,
@@ -349,13 +349,13 @@ exports.createOrder = async (req, res) => {
             return {
               id: item.meta?._id,
               description: item.order_item_name,
-              price: {value: (parseFloat(item.meta?._line_total)/parseInt(item.meta?._qty) * 100).toFixed(2), currency: 'EUR'},
+              price: { value: (parseFloat(item.meta?._line_total) / parseInt(item.meta?._qty) * 100).toFixed(2), currency: 'EUR' },
               quantity: item.meta?._qty,
               type: "ARTICLE",
               vatPercentage: 9
             }
           })
-          
+
         },
         serviceId: process.env.PAY_NL_SERVICE_ID,
         description: `Order: #..${results.insertedId.toString().slice(-5)}`,
@@ -363,28 +363,28 @@ exports.createOrder = async (req, res) => {
         exchangeUrl: `https://back.fitpreps.nl/api/orders/paynl`
       })
     };
-    
+
     const response = await fetch('https://connect.pay.nl/v1/orders', options);
 
     const data = await response.json();
     if (data) {
-     
-            
-          // Successfully started payment
-          const paymentUrl = data.links.redirect;
-          const transactionId = data.orderId;
-          // Update the order with payment URL and transactionId
-          await ordersCollection.updateOne(
-            { _id: results.insertedId },
-            {
-              $set: {
-                'metadata.transactionId': transactionId, // Adds or updates the transactionId in metadata
-                status: 'cancelled',  // Updates status to 'pending' (or awaiting_payment)
-                'metadata._customer_ip_address': ip,
-              },
-            }
-          )
-      res.json({ paymentUrl, message: 'Order created successfully, proceed to payment',transactionId});
+
+
+      // Successfully started payment
+      const paymentUrl = data.links.redirect;
+      const transactionId = data.orderId;
+      // Update the order with payment URL and transactionId
+      await ordersCollection.updateOne(
+        { _id: results.insertedId },
+        {
+          $set: {
+            'metadata.transactionId': transactionId, // Adds or updates the transactionId in metadata
+            status: 'cancelled',  // Updates status to 'pending' (or awaiting_payment)
+            'metadata._customer_ip_address': ip,
+          },
+        }
+      )
+      res.json({ paymentUrl, message: 'Order created successfully, proceed to payment', transactionId });
     } else {
       res.status(400).json({ message: 'Error creating order', error: error.message });
     }
@@ -493,8 +493,18 @@ exports.checkPayment = async (req, res) => {
           // }
           // );
           console.log('Transaction is canceled');
-        }else if (result.isAuthorized() && orderData.status == "cancelled") {
+        } else if (result.isAuthorized() && orderData.status == "cancelled") {
           paymentStatus = 'processing';
+          const options = {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${process.env.PAY_NL_API_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+
+          };
+
+           await fetch(`https://connect.pay.nl/v1/orders/${transactionId}/capture`, options);
         } else if (result.isBeingVerified()) {
           paymentStatus = 'cancelled';
 
@@ -508,7 +518,7 @@ exports.checkPayment = async (req, res) => {
           //     }
           //   )
           // );
-         
+
           console.log('Transaction is being verified');
         }
 
@@ -525,10 +535,10 @@ exports.checkPayment = async (req, res) => {
             },
           }
         );
-      
+
 
         if ((result.isPaid() || result.isAuthorized()) && orderData.status == "cancelled") {
-          
+
           setImmediate(async () => {
 
             await emailQueue.add(
@@ -714,13 +724,13 @@ exports.checkPayment = async (req, res) => {
 
           }
           //update stock action
-           await productsCollection.bulkWrite(bulkOperations);
+          await productsCollection.bulkWrite(bulkOperations);
 
 
 
 
         }
-        
+
         // Send response
         res.status(200).json({
           message: 'Payment status updated successfully',
@@ -746,10 +756,177 @@ exports.checkPayment = async (req, res) => {
 
 
 
+// exports.getPaynlStatus = async (req, res) => {
+//   // const options = {
+//   //   method: 'PATCH',
+//   //   headers: {
+//   //     'Authorization': `Bearer ${process.env.PAY_NL_API_TOKEN}`,
+//   //     'Content-Type': 'application/json',
+//   //   },
+
+//   // };
+
+//   // const response = await fetch(`https://connect.pay.nl/v1/orders/${req.params.id}/capture`, options);
+//   const options = {
+//     method: 'GET',
+//     headers: {
+//       'Authorization': `Bearer ${process.env.PAY_NL_API_TOKEN}`,
+//       'Content-Type': 'application/json',
+//     },
+
+//   };
+
+//   const response = await fetch(`https://connect.pay.nl/v1/orders/${req.params.id}/status`, options);
+
+//   const data = await response.json();
+//   console.log(data)
+//   res.json(data)
+// }
+// async function captureOldKlarnaPayments(transactionIds) {
+//   for (const transactionId of transactionIds) {
+
+//     try {
+//       const options = {
+//         method: 'PATCH',
+//         headers: {
+//           'Authorization': `Bearer ${process.env.PAY_NL_API_TOKEN}`,
+//           'Content-Type': 'application/json',
+//         },
+
+//       };
+//       //All orders after createdAt:  "2025-02-15T11:36:05.188Z"
+//       const response = await fetch(`https://connect.pay.nl/v1/orders/${transactionId}/capture`, options);
+//       console.log(`Captured Klarna Payment: ${transactionId}`, response.data);
+//     } catch (error) {
+//       console.error(`Error capturing payment ${transactionId}:`, error.response?.data || error.message);
+//     }
+//   }
+// }
+// exports.getPaynlStatus = async (req, res) => {
+
+//   const ordersCollection = getDB().collection('orders');
+//   const dateString = "2025-02-15T11:36:05.188Z"; // String comparison
+
+//   const orders = await ordersCollection.find({
+//     createdAt: { $gt: dateString },
+//     'metadata._payment_method_title': "Klarna"
+//   }, { projection: { _id: 1, createdAt: 1, metadata: { transactionId: 1 } } }).toArray();
+//   // captureOldKlarnaPayments(orders.map(order => order.metadata.transactionId))
+//   console.log(orders.length);
+
+//   res.json(orders)
+// }
+// async function captureKlarnaPayment(transactionId) {
+//   try {
+//       const options = {
+//           method: "PATCH",
+//           headers: {
+//               Authorization: `Bearer ${process.env.PAY_NL_API_TOKEN}`,
+//               "Content-Type": "application/json",
+//           },
+//       };
+
+//       const response = await fetch(`https://connect.pay.nl/v1/orders/${transactionId}/capture`, options);
+//       const data = await response.json();
+
+//       if (!response.ok) {
+//           throw new Error(`Failed to capture ${transactionId}: ${data.message || response.statusText}`);
+//       }
+
+//       console.log(`Captured Klarna Payment: ${transactionId}`, data);
+//       return { transactionId, success: true, data };
+//   } catch (error) {
+//       console.error(`Error capturing payment ${transactionId}:`, error.message);
+//       return { transactionId, success: false, error: error.message };
+//   }
+// }
+
+// async function captureOldKlarnaPayments(transactionIds, limit = 10, delayMs = 500) {
+//   const results = [];
+
+//   for (let i = 0; i < transactionIds.length; i += limit) {
+//       const batch = transactionIds.slice(i, i + limit); // Get a batch of transactions
+//       console.log(`Processing batch: ${batch.length} orders`);
+
+//       const batchResults = await Promise.all(batch.map(captureKlarnaPayment));
+//       results.push(...batchResults);
+
+//       // Optional: Add a short delay to avoid rate limits
+//       console.log(`Waiting ${delayMs}ms before next batch...`);
+//       await new Promise(resolve => setTimeout(resolve, delayMs));
+//   }
+
+//   console.log("Batch processing completed.");
+//   return results;
+// }
+
+// // Fetch Klarna orders from DB and capture payments
+// exports.getPaynlStatus = async (req, res) => {
+//   const ordersCollection = getDB().collection("orders");
+//   const dateString = "2025-02-15T11:36:05.188Z"; // Orders created after this date
+
+//   const orders = await ordersCollection
+//       .find(
+//           {
+//               createdAt: { $gt: dateString },
+//               "metadata._payment_method_title": "payment_method.klarna.name",
+//           },
+//           { projection: { _id: 1, createdAt: 1, "metadata.transactionId": 1 } }
+//       )
+//       .toArray();
+
+//   const transactionIds = orders.map(order => order.metadata.transactionId);
+
+//   console.log(`Total Klarna orders found: ${transactionIds.length}`);
+
+//   if (transactionIds.length > 0) {
+//       await captureOldKlarnaPayments(transactionIds, 10, 1100); // Capture in batche
+//   }
+
+//   res.json({ totalOrders: orders.length, capturedOrders: transactionIds.length ,orders});
+// };
+
+// exports.getPaynlStatus = async (req, res) => {
+//   const ordersCollection = getDB().collection("orders");
+//   const dateString = "2025-02-15T11:36:05.188Z"; // Orders created after this date
+
+//   const orders = await ordersCollection
+//       .find(
+//           {
+//               createdAt: { $gt: dateString },
+
+//           },
+//           { projection: { _id: 1, createdAt: 1, "metadata._payment_method_title": 1 } }
+//       )
+//       .toArray();
+
+//   const methods = orders.map(order => order.metadata._payment_method_title);
+
+//   console.log(`Total Klarna orders found: ${methods.length}`);
 
 
 
+//   res.json({ totalOrders: orders.length, capturedOrders: methods.length ,orders});
+// };
+// exports.getPaynlStatus = async (req, res) => {
+//   const ordersCollection = getDB().collection("orders");
+//   const dateString = "2025-02-15T11:36:05.188Z"; // Convert to Date object
 
+//   // Fetch orders in the date range
+//   const orders = await ordersCollection
+//       .find(
+//           { createdAt: { $gt: dateString } },
+//           { projection: { "metadata._payment_method_title": 1 } }
+//       )
+//       .toArray();
+
+//   // Extract payment method titles and get unique value
+//   const methods = [...new Set(orders.map(order => order.metadata?._payment_method_title).filter(Boolean))];
+
+//   console.log(`Unique Payment Methods Found:`, methods);
+
+//   res.json({ totalOrders: orders.length, uniquePaymentMethods: methods });
+// };
 
 // exports.getAllOrders = async (req, res) => {
 //   try {

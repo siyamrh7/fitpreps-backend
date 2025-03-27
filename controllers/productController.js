@@ -229,6 +229,7 @@ exports.getAllProducts = async (req, res) => {
       categories: 1,
       thumbnail: 1,
       files: 1,
+      eiwitten: 1,
       metadata: {
         _price: 1,
         _stock: 1,
@@ -239,7 +240,8 @@ exports.getAllProducts = async (req, res) => {
         voedingswaarde_data: 1,
         _yith_wcpb_bundle_data: 1,
         _freezer: 1,
-        allergenen: 1
+        allergenen: 1,
+        badges: 1
       },
     };
 
@@ -366,22 +368,32 @@ exports.deleteProductById = async (req, res) => {
     const result = await productsCollection.deleteOne({ _id: new ObjectId(productId) });
 
     if (result.deletedCount === 1) {
-      // Path to the image file
-      const imagePath = path.join(__dirname, '..', 'uploads', product.thumbnail.url);
+      if(product.files && product.files.length > 0){
 
-      // Delete the image file from the uploads folder
-      fs.unlink(imagePath, async (err) => {
-        if (err) {
-          console.error(`Error deleting image file: ${err.message}`);
-          return res.status(500).json({ message: 'Error deleting image file', error: err });
+      product.files.forEach(file => {
+        const filePath = path.join(__dirname, '../uploads', file.url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
         }
+      });}
+      if(product.thumbnail && product.thumbnail.url){
+        
+        // Path to the image file
+        const imagePath = path.join(__dirname, '../uploads', product.thumbnail.url );
+  
+        // Delete the image file from the uploads folder
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      }
 
         res.status(200).json({ message: 'Product deleted successfully', product:product });
-      });
+      
     } else {
       res.status(404).json({ message: 'Product not found' });
     }
   } catch (error) {
+    console.log(error)
     res.status(400).json({ message: 'Error deleting product', error });
   }
 };

@@ -230,6 +230,8 @@ exports.getAllProducts = async (req, res) => {
       thumbnail: 1,
       files: 1,
       eiwitten: 1,
+      createdAt: 1,
+      
       metadata: {
         _price: 1,
         _stock: 1,

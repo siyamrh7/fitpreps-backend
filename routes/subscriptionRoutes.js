@@ -10,12 +10,30 @@ router.post('/purchase-points', subscriptionController.purchasePoints);
 router.get('/payment-check/:id', subscriptionController.paymentCheck);
 router.post('/start-subscription', subscriptionController.startSubscription);
 
+// Payment webhooks
 router.post('/first-payment-webhook', subscriptionController.firstPaymentWebhook);
-router.post('/subscription-webhook', subscriptionController.recuiringPointsWebhook);
+router.post('/payment-webhook', subscriptionController.paymentWebhook);
 
+// User subscription routes
+router.get('/user/:userId', subscriptionController.getUserSubscriptionData);
+router.get('/user-subscriptions/:userId', subscriptionController.getUserSubscriptions);
+router.get('/details/:subscriptionId', subscriptionController.getSubscriptionDetails);
 
-router.get('/get-subscription-data', subscriptionController.getSubsctionData);
-router.get('/trigger-subscription', subscriptionController.triggerImmediatePayment);
+// Admin routes
+router.get('/', authenticateAdmin, subscriptionController.getSubscriptions);
+router.get('/:id', authenticateAdmin, subscriptionController.getSubscriptionById);
 
+router.get('/dashboard', authenticateAdmin, subscriptionController.getSubscriptionDashboard);
+router.get('/stats', authenticateAdmin, subscriptionController.getSubscriptionStats);
+
+// Subscription management
+router.post('/modify', authenticateJWT, subscriptionController.modifySubscription);
+router.post('/cancel', authenticateJWT, subscriptionController.cancelSubscription);
+router.post('/pause', authenticateJWT, subscriptionController.pauseSubscription);
+router.post('/resume', authenticateJWT, subscriptionController.resumeSubscription);
+
+// Admin management
+router.post('/update-charge-date', authenticateAdmin, subscriptionController.updateNextChargeDate);
+router.post('/update-amount', authenticateAdmin, subscriptionController.updateSubscriptionAmount);
 
 module.exports = router;

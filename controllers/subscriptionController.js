@@ -701,10 +701,10 @@ exports.paymentWebhook = async (req, res) => {
         const retryDate = new Date();
         retryDate.setDate(retryDate.getDate() + 3);
         
-        await db.collection('subscriptions').updateOne(
-          { _id: subscription._id },
-          { $set: { nextPaymentDate: retryDate.toISOString().split('T')[0] } }
-        );
+        // await db.collection('subscriptions').updateOne(
+        //   { _id: subscription._id },
+        //   { $set: { nextPaymentDate: retryDate.toISOString().split('T')[0] } }
+        // );
         
         console.log(`Payment ${paymentId} failed for subscription ${subscription._id}; retry scheduled for ${retryDate.toISOString().split('T')[0]}`);
       }

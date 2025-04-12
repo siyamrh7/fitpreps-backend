@@ -1093,4 +1093,386 @@ const html= `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; 
   }
 };
 
+// Helper function to send emails
+const sendEmail = async (to, subject, html) => {
+  try {
+    const accessToken = await getAccessToken();
+
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    const mailOptions = {
+      subject: subject,
+      from: {
+        emailAddress: {
+          address: 'info@fitpreps.nl',
+        },
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: to,
+          },
+        },
+      ],
+      body: {
+        content: html,
+        contentType: 'html',
+      },
+      replyTo: [{
+        emailAddress: {
+          address: 'info@fitpreps.nl',
+        }
+      }],
+    };
+
+    const options = {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message: mailOptions, saveToSentItems: false }),
+    };
+
+    await fetch(
+      `${graphEndpoint}/v1.0/users/info@fitpreps.nl/sendMail`,
+      options
+    );
+    
+    console.log(`Email sent successfully to ${to}`);
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+};
+
+// Weekly meal reminder email
+exports.weeklyMealReminderController = async (mailOptions) => {
+  try {
+    const { to, name, nextDeliveryDate, mealPlan } = mailOptions;
+    const subject = 'Your Weekly Meal Plan Reminder';
+    const html = `
+      <div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+          <!-- Header -->
+          <div style="background-color: #ff4e00; padding: 10px;">
+            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">Weekly Meal Plan Reminder</h1>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 20px;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">Hello ${name},</h2>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">This is a friendly reminder that your next meal delivery is scheduled for <strong>${nextDeliveryDate}</strong>.</p>
+            
+            <h3 style="margin: 20px 0 10px 0; font-size: 16px;">Here's a preview of your upcoming meals:</h3>
+            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 16px;">
+              ${mealPlan.map(meal => `<li style="margin-bottom: 5px;">${meal.name}</li>`).join('')}
+            </ul>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">You can view your full meal plan and make any adjustments in your account dashboard.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">View My Meal Plan</a>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Thank you for choosing our service!</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px; background-color: #f9f9f9; padding: 15px;">
+            <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+            <p style="margin: 10px 0;">
+              <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+            </p>
+            <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+            <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+            <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending weekly meal reminder:', error);
+    throw error;
+  }
+};
+
+// Sunday meal reminder email
+exports.sundayMealReminderController = async (mailOptions) => {
+  try {
+    const { to, name, nextDeliveryDate, mealPlan } = mailOptions;
+    const subject = 'Your Sunday Meal Plan Update';
+    const html = `
+      <div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+          <!-- Header -->
+          <div style="background-color: #ff4e00; padding: 10px;">
+            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">Sunday Meal Plan Update</h1>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 20px;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">Hello ${name},</h2>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Your meal plan for the upcoming week is ready!</p>
+            <p style="margin: 0 0 15px 0; font-size: 16px;"><strong>Delivery Date:</strong> ${nextDeliveryDate}</p>
+            
+            <h3 style="margin: 20px 0 10px 0; font-size: 16px;">Your meals for this week:</h3>
+            <ul style="margin: 0 0 15px 0; padding-left: 20px; font-size: 16px;">
+              ${mealPlan.map(meal => `<li style="margin-bottom: 5px;">${meal.name}</li>`).join('')}
+            </ul>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">You can still make changes to your meal plan until tomorrow at 5 PM.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">Update My Meal Plan</a>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Thank you for choosing our service!</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px; background-color: #f9f9f9; padding: 15px;">
+            <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+            <p style="margin: 10px 0;">
+              <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+            </p>
+            <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+            <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+            <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending Sunday meal reminder:', error);
+    throw error;
+  }
+};
+
+// Monthly renewal reminder email
+exports.monthlyRenewalReminderController = async (mailOptions) => {
+  try {
+    const { to, name, renewalDate, amount } = mailOptions;
+    const subject = 'Subscription Renewal Reminder';
+    const html = `
+      <div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+          <!-- Header -->
+          <div style="background-color: #ff4e00; padding: 10px;">
+            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">Subscription Renewal Reminder</h1>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 20px;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">Hello ${name},</h2>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">This is a reminder that your subscription will renew on <strong>${renewalDate}</strong>.</p>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">The renewal amount will be <strong>€${amount}</strong>.</p>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Subscription Details:</strong></p>
+              <p style="margin: 0 0 5px 0; font-size: 16px;">Renewal Date: ${renewalDate}</p>
+              <p style="margin: 0 0 5px 0; font-size: 16px;">Amount: €${amount}</p>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">If you wish to make any changes to your subscription or have any questions, please visit your account dashboard or contact our support team.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">Manage My Subscription</a>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Thank you for your continued support!</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px; background-color: #f9f9f9; padding: 15px;">
+            <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+            <p style="margin: 10px 0;">
+              <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+            </p>
+            <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+            <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+            <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly renewal reminder:', error);
+    throw error;
+  }
+};
+
+// Subscription cancelled email
+exports.subscriptionCancelledController = async (mailOptions) => {
+  try {
+    const { to, name, endDate } = mailOptions;
+    const subject = 'Subscription Cancellation Confirmation';
+    const html = `
+      <div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+          <!-- Header -->
+          <div style="background-color: #ff4e00; padding: 10px;">
+            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">Subscription Cancellation Confirmation</h1>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 20px;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">Hello ${name},</h2>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">We're sorry to see you go. Your subscription has been cancelled as requested.</p>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Your subscription will remain active until <strong>${endDate}</strong>.</p>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Cancellation Details:</strong></p>
+              <p style="margin: 0 0 5px 0; font-size: 16px;">Cancellation Date: ${new Date().toLocaleDateString()}</p>
+              <p style="margin: 0 0 5px 0; font-size: 16px;">End Date: ${endDate}</p>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">If you change your mind, you can reactivate your subscription at any time through your account dashboard.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">Reactivate My Subscription</a>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">We hope to see you again soon!</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px; background-color: #f9f9f9; padding: 15px;">
+            <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+            <p style="margin: 10px 0;">
+              <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+            </p>
+            <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+            <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+            <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending subscription cancelled email:', error);
+    throw error;
+  }
+};
+
+// Subscription paused email
+exports.subscriptionPausedController = async (mailOptions) => {
+  try {
+    const { to, name, pauseStartDate, pauseEndDate } = mailOptions;
+    const subject = 'Subscription Pause Confirmation';
+    const html = `
+      <div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+          <!-- Header -->
+          <div style="background-color: #ff4e00; padding: 10px;">
+            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">Subscription Pause Confirmation</h1>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 20px;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">Hello ${name},</h2>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Your subscription has been paused as requested.</p>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Pause Details:</strong></p>
+              <p style="margin: 0 0 5px 0; font-size: 16px;">Pause Start Date: ${pauseStartDate}</p>
+              <p style="margin: 0 0 5px 0; font-size: 16px;">Pause End Date: ${pauseEndDate}</p>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Your subscription will automatically resume on <strong>${pauseEndDate}</strong>.</p>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">You can modify your pause dates or resume early through your account dashboard.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">Manage My Subscription</a>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Thank you for your understanding!</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px; background-color: #f9f9f9; padding: 15px;">
+            <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+            <p style="margin: 10px 0;">
+              <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+            </p>
+            <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+            <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+            <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending subscription paused email:', error);
+    throw error;
+  }
+};
+
+// Subscription adjusted email
+exports.subscriptionAdjustedController = async (mailOptions) => {
+  try {
+    const { to, name, changes, newAmount } = mailOptions;
+    const subject = 'Subscription Adjustment Confirmation';
+    const html = `
+      <div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
+          <!-- Header -->
+          <div style="background-color: #ff4e00; padding: 10px;">
+            <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">Subscription Adjustment Confirmation</h1>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 20px;">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px;">Hello ${name},</h2>
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Your subscription has been adjusted as requested.</p>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 15px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 16px;"><strong>Changes made:</strong></p>
+              <ul style="margin: 0 0 5px 0; padding-left: 20px; font-size: 16px;">
+                ${Object.entries(changes).map(([key, value]) => `<li style="margin-bottom: 5px;">${key}: ${value}</li>`).join('')}
+              </ul>
+              <p style="margin: 10px 0 5px 0; font-size: 16px;"><strong>Your new monthly amount will be €${newAmount}</strong></p>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">These changes will take effect on your next billing cycle.</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">View My Subscription</a>
+            </div>
+            
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Thank you for your business!</p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px; background-color: #f9f9f9; padding: 15px;">
+            <p style="margin: 0; font-size: 14px;">Volg ons op</p>
+            <p style="margin: 10px 0;">
+              <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
+              <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
+            </p>
+            <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
+            <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
+            <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
+          </div>
+        </div>
+      </div>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending subscription adjusted email:', error);
+    throw error;
+  }
+};
+
+
 

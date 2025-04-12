@@ -16,10 +16,14 @@ router.post('/payment-webhook', subscriptionController.paymentWebhook);
 
 // User subscription routes
 router.get('/user/:userId', subscriptionController.getUserSubscriptionData);
+router.post('/update-subscription-data', authenticateJWT, subscriptionController.updateSubscriptionData);
 router.get('/user-subscriptions/:userId', subscriptionController.getUserSubscriptions);
 router.get('/details/:subscriptionId', subscriptionController.getSubscriptionDetails);
 
 // Admin routes
+router.put('/status', authenticateAdmin, subscriptionController.updateSubscriptionStatus);
+router.delete('/', authenticateAdmin, subscriptionController.deleteSubscriptions);
+
 router.get('/', authenticateAdmin, subscriptionController.getSubscriptions);
 router.get('/:id', authenticateAdmin, subscriptionController.getSubscriptionById);
 

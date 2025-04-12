@@ -3,9 +3,10 @@ const { ObjectId } = require('mongodb');
 const { createMollieClient } = require('@mollie/api-client');
 const mollieClient = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 const cron = require('node-cron');
+const { DateTime } = require('luxon');
 
 // Configure the cron job to run at 1 AM every day
-cron.schedule("*/30 * * * *", processSubscriptions);
+cron.schedule("0 1 * * *", processSubscriptions);
 function convertDataFormat(data,date) {
   const result = {
     // Cart information
@@ -78,7 +79,58 @@ function convertDataFormat(data,date) {
   
   return result;
 }
+function calculateNextDate(dateString, frequency) {
+  const date = new Date(dateString);
+  
+  if (frequency === 'daily') {
+    date.setDate(date.getDate() + 1);
+  } else if (frequency === 'weekly') {
+    date.setDate(date.getDate() + 7);
+  } else {
+    // Default to monthly
+    date.setMonth(date.getMonth() + 1);
+  }
+  
+  return date.toISOString().split('T')[0];
+}
 
+function calculateNextDateOfBilling(dateString, frequency) {
+  const date = DateTime.fromISO(dateString, { zone: 'Europe/Amsterdam' });
+
+  if (frequency === 'daily') {
+    return date.plus({ days: 1 }).toISODate();
+
+  } else if (frequency === 'weekly') {
+    // Move to the *next* Monday (skip this week's Monday if today is Monday)
+    const currentWeekday = date.weekday; // 1 = Monday
+    const daysToAdd = 8 - currentWeekday; // e.g., if Monday (1), then add 7
+    return date.plus({ days: daysToAdd }).toISODate();
+
+  } else if (frequency === 'monthly') {
+    // Just add 30 days
+    return date.plus({ days: 30 }).toISODate();
+  }
+
+  // fallback
+  return date.toISODate();
+}
+function calculateNextMondayOfBilling(dateString, frequency) {
+  const date = DateTime.fromISO(dateString, { zone: 'Europe/Amsterdam' });
+
+  if (frequency === 'daily') {
+    return date.plus({ days: 1 }).toISODate();
+
+  } else if (frequency === 'weekly') {
+    // weekday: 1 = Monday, 7 = Sunday
+    const daysToAdd = (8 - date.weekday) % 7 || 7; // ensures next Monday
+    return date.plus({ days: daysToAdd }).toISODate();
+
+  } else if (frequency === 'monthly') {
+    return date.plus({ days: 30 }).toISODate();
+  }
+
+  return date.toISODate();
+}
 /**
  * Main function to process all subscription-related tasks
  */
@@ -130,22 +182,13 @@ async function processPointDeliveries(date) {
         subscriptionId: sub._id,
         items: sub.items,
         pointsUsed: parseInt(sub.pointsUsed),
-        metadata: convertDataFormat(sub.data,date), // Convert the paymentData.data,
+        metadata: {...sub.data,_delivery_date:date,_payment_method_title : "Subscription",_delivery_company:"trunkrs"}, // Convert the paymentData.data,
         deliveryDate: date,
         createdAt: new Date().toISOString(),
         status: 'subscription',
         total:(parseFloat(sub.pointsUsed)/10).toFixed(2).toString()
       });
-      // await db.collection("subOrders").insertOne({
-      //   userId: new ObjectId(userId),
-      //   subscriptionId: sub._id,
-      //   items: sub.items,
-      //   pointsAdded: pointsToAdd,
-      //   deliveryDate: date,
-      //   data: sub.data,
-      //   createdAt: new Date()
-      // });
-      
+   
       // Reset points used counter for new cycle
       // await db.collection("subscriptions").updateOne(
       //   { _id: sub._id },
@@ -164,12 +207,12 @@ async function processPointDeliveries(date) {
       const nextDeliveryDate = calculateNextDate(date, sub.frequency);
       
       // Update subscription with next delivery date
-      //TESTING CHANGE START
-      // await db.collection("subscriptions").updateOne(
-      //   { _id: sub._id },
-      //   { $set: { deliveryDate: nextDeliveryDate } }
-      // );
-      //TESTING CHANGE END
+      // TESTING CHANGE START
+      await db.collection("subscriptions").updateOne(
+        { _id: sub._id },
+        { $set: { deliveryDate: nextDeliveryDate } }
+      );
+      // TESTING CHANGE END
       
       console.log(`Order created and points added for subscription userId: ${sub.userId}`);
     } catch (error) {
@@ -212,7 +255,7 @@ async function processSubscriptionPayments(date) {
         description: `Subscription Payment - ${sub._id}`,
         customerId: sub.mollieCustomerId,
         sequenceType: "recurring",
-        webhookUrl: `${process.env.BACKEND_URL}/api/subscription/payment-webhook`,
+        webhookUrl: `${process.env.API_BASE_URL}/api/subscription/payment-webhook`,
         metadata: {
           subscriptionId: sub._id.toString(),
           userId: sub.userId.toString(),
@@ -279,20 +322,8 @@ async function processSubscriptionPayments(date) {
 /**
  * Calculate the next date based on frequency
  */
-function calculateNextDate(dateString, frequency) {
-  const date = new Date(dateString);
-  
-  if (frequency === 'daily') {
-    date.setDate(date.getDate() + 1);
-  } else if (frequency === 'weekly') {
-    date.setDate(date.getDate() + 7);
-  } else {
-    // Default to monthly
-    date.setMonth(date.getMonth() + 1);
-  }
-  
-  return date.toISOString().split('T')[0];
-}
+
+
 // function calculateNextDate(dateString, frequency) {
 //   const date = new Date(dateString);
 
@@ -315,7 +346,7 @@ function calculateNextDate(dateString, frequency) {
  */
 exports.purchasePoints = async (req, res) => {
   try {
-    const { userId, totalPoints, frequency, amount, data } = req.body;
+    const { userId, totalPoints, frequency, amount, data ,startDate} = req.body;
     
     if (!userId || !totalPoints || !frequency || !amount) {
       return res.status(400).json({
@@ -375,7 +406,6 @@ exports.purchasePoints = async (req, res) => {
     // Check if user already has an active subscription
     const existingSubscription = await getDB().collection('subscriptions').findOne({ 
       userId: new ObjectId(userId),
-      status: { $in: ['active', 'inactive'] },
       paymentStatus: 'paid' 
     });
     
@@ -400,7 +430,7 @@ exports.purchasePoints = async (req, res) => {
       },
       description: `Purchase ${totalPoints} points and ${existingSubscription ? 'modify' : 'start'} subscription`,
       redirectUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`,
-      webhookUrl: `${process.env.BACKEND_URL}/api/subscription/first-payment-webhook`,
+      webhookUrl: `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
       sequenceType: existingSubscription ? 'recurring' : 'first', // First or recurring based on existing subscription
       metadata: paymentMetadata
     });
@@ -419,7 +449,9 @@ exports.purchasePoints = async (req, res) => {
             paymentStatus: "pending",
             updatedAt: today,
             currentPaymentId: payment.id,
-            data: data || existingSubscription.data
+            data: data || existingSubscription.data,
+            nextPaymentDate: calculateNextDateOfBilling(startDate, frequency),
+            lastPaymentDate: today.toISOString().split('T')[0],
           },
           $push: {
             paymentHistory: {
@@ -435,14 +467,15 @@ exports.purchasePoints = async (req, res) => {
       
       return res.json({
         success: true,
-        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?allow=true`
+        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${payment.id}`
       });
     } else {
       // Calculate the initial delivery date and next payment date
-      const startDate = new Date();
-      const deliveryDate = calculateNextDate(startDate.toISOString().split('T')[0], frequency);
-      const nextPaymentDate = calculateNextDate(startDate.toISOString().split('T')[0], frequency);
-      
+      // const startDate = new Date();
+      // const deliveryDate = calculateNextDate(startDate.toISOString().split('T')[0], frequency);
+      // const nextPaymentDate = calculateNextDate(startDate.toISOString().split('T')[0], frequency);
+      const nextPaymentDate = calculateNextDateOfBilling(startDate, frequency);
+
       await getDB().collection('subscriptions').insertOne({
         userId: new ObjectId(userId),
         mollieCustomerId: mollieCustomerId,
@@ -454,11 +487,11 @@ exports.purchasePoints = async (req, res) => {
         paymentStatus: "pending",
         createdAt: today,
         updatedAt: today,
-        startDate: today.toISOString().split('T')[0],
+        startDate: startDate,
         // deliveryDate: deliveryDate,
         //TESTING START
-        // nextPaymentDate: nextPaymentDate,
-         nextPaymentDate: today.toISOString().split('T')[0],
+        nextPaymentDate: nextPaymentDate,
+        //  nextPaymentDate: today.toISOString().split('T')[0],
 
         //TESTING END
         lastPaymentDate: today.toISOString().split('T')[0],
@@ -520,7 +553,6 @@ exports.firstPaymentWebhook = async (req, res) => {
           { 
             $set: { 
               paymentStatus: 'paid',
-              status: 'active',
               updatedAt: new Date()
             }
           }
@@ -665,10 +697,10 @@ exports.paymentWebhook = async (req, res) => {
      
       // Update next payment date in subscription 
       //TESTING CHANGE START
-      // await db.collection('subscriptions').updateOne(
-      //   { _id: subscription._id },
-      //   { $set: { nextPaymentDate: nextPaymentDate } }
-      // );
+      await db.collection('subscriptions').updateOne(
+        { _id: subscription._id },
+        { $set: { nextPaymentDate: nextPaymentDate } }
+      );
       //TESTING CHANGE END
       await db.collection('users').updateOne(
         { _id: new ObjectId(subscription.userId) },
@@ -699,12 +731,12 @@ exports.paymentWebhook = async (req, res) => {
       } else {
         // Retry payment in 3 days
         const retryDate = new Date();
-        retryDate.setDate(retryDate.getDate() + 3);
+        retryDate.setDate(retryDate.getDate() + 1);
         
-        // await db.collection('subscriptions').updateOne(
-        //   { _id: subscription._id },
-        //   { $set: { nextPaymentDate: retryDate.toISOString().split('T')[0] } }
-        // );
+        await db.collection('subscriptions').updateOne(
+          { _id: subscription._id },
+          { $set: { nextPaymentDate: retryDate.toISOString().split('T')[0] } }
+        );
         
         console.log(`Payment ${paymentId} failed for subscription ${subscription._id}; retry scheduled for ${retryDate.toISOString().split('T')[0]}`);
       }
@@ -893,8 +925,8 @@ exports.startSubscription = async (req, res) => {
           $set: { 
             startDate,
             //TESTING CHANGE START
-            // deliveryDate: formattedDeliveryDate,
-             deliveryDate: startDate,
+            deliveryDate: formattedDeliveryDate,
+            //  deliveryDate: startDate,
 
             //TESTING CHANGE END
             status: 'active',
@@ -918,7 +950,7 @@ exports.startSubscription = async (req, res) => {
         subscriptionId: paymentData._id,
         items: items,
         pointsUsed: parseInt(pointsUsed),
-        metadata: convertDataFormat(paymentData.data,startDate), // Convert the paymentData.data,
+        metadata: {...paymentData.data,_delivery_date:startDate,_payment_method_title : "Subscription",_delivery_company:"trunkrs"}, // Convert the paymentData.data,
         deliveryDate: startDate,
         createdAt: new Date().toISOString(),
         status: 'subscription',
@@ -989,6 +1021,241 @@ exports.getUserSubscriptionData = async (req, res) => {
 /**
  * Modify an existing subscription
  */
+exports.updateSubscriptionData = async (req, res) => {
+  try {
+    const {subscriptionId,data} = req.body;
+    
+    if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription ID'
+      });
+    }
+    
+    
+    
+    // Update subscription data
+    const updatedSubscription = await getDB().collection('subscriptions').updateOne(
+      { _id: new ObjectId(subscriptionId) },
+      { $set: { data } }
+    );
+    const updatedSubscriptionData = await getDB().collection('subscriptions').findOne({ _id: new ObjectId(subscriptionId) });
+    return res.status(200).json({
+      success: true,
+      subscription: updatedSubscriptionData
+    });
+  } catch (error) {
+    
+  }
+}
+
+
+//Admin
+exports.updateSubscriptionStatus = async (req, res) => {
+  try {
+    const { subscriptionIds, status } = req.body.data; // Array of order IDs and the new status from the request body
+    // Validate that subscriptionIds is an array and not empty
+    if (!Array.isArray(subscriptionIds) || subscriptionIds.length === 0) {
+      return res.status(400).json({ message: 'Order IDs are required and must be an array' });
+    }
+
+    // Validate that status is a string and not empty
+    if (typeof status !== 'string' || status.trim() === '') {
+      return res.status(400).json({ message: 'Status is required and must be a valid string' });
+    }
+
+    // Ensure all IDs are valid ObjectIds
+    const invalidIds = subscriptionIds.filter(id => !ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ message: 'Invalid order ID(s): ' + invalidIds.join(', ') });
+    }
+
+    const subscriptionsCollection = getDB().collection('subscriptions');
+
+    // Update the status of the subscriptions by their IDs
+    const result = await subscriptionsCollection.updateMany(
+      { _id: { $in: subscriptionIds.map(id => new ObjectId(id)) } }, // Convert string IDs to ObjectId
+      { $set: { status: status } } // Set the new status
+    );
+
+    // If no subscriptions were updated, return a message
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'No subscriptions found to update' });
+    }
+
+    res.status(200).json({ message: `${result.modifiedCount} subscriptions status updated successfully` });
+
+  } catch (error) {
+    console.error('Error updating subscriptions status:', error);
+    res.status(500).json({ message: 'Error updating subscriptions status', error: error.message });
+  }
+};
+exports.deleteSubscriptions = async (req, res) => {
+  try {
+    const { subscriptionIds } = req.body; // Array of order IDs from the request body
+
+    // Validate that subscriptionIds is an array and not empty
+    if (!Array.isArray(subscriptionIds) || subscriptionIds.length === 0) {
+      return res.status(400).json({ message: 'Order IDs are required and must be an array' });
+    }
+
+    // Ensure all IDs are valid ObjectIds
+    const invalidIds = subscriptionIds.filter(id => !ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ message: 'Invalid order ID(s): ' + invalidIds.join(', ') });
+    }
+
+    const subscriptionsCollection = getDB().collection('subscriptions');
+
+    // Delete the subscriptions by their IDs
+    const result = await subscriptionsCollection.deleteMany({
+      _id: { $in: subscriptionIds.map(id => new ObjectId(id)) } // Convert string IDs to ObjectId
+    });
+
+    // If no subscriptions were deleted, return a message
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'No subscriptions found to delete' });
+    }
+
+    res.status(200).json({ message: `${result.deletedCount} subscriptions deleted successfully` });
+
+  } catch (error) {
+    console.error('Error deleting subscriptions:', error);
+    res.status(500).json({ message: 'Error deleting subscriptions', error: error.message });
+  }
+};
+
+/**
+ * Resume a paused subscription user
+ */
+exports.resumeSubscription = async (req, res) => {
+  try {
+    const { subscriptionId } = req.body;
+    
+    if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription ID'
+      });
+    }
+    // Find subscription
+    const subscription = await getDB().collection('subscriptions').findOne({
+      _id: new ObjectId(subscriptionId),
+      status: 'paused'
+    });
+    
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: 'Paused subscription not found'
+      });
+    }
+    
+    // Calculate new delivery and payment dates
+    const today = new Date();
+    const deliveryDate = calculateNextDate(today.toISOString().split('T')[0], subscription.frequency);
+    const todayISO = today.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
+    let paymentDate;
+    
+    if (subscription.nextPaymentDate <= todayISO) {
+      paymentDate = subscription.nextPaymentDate;
+    } else {
+      paymentDate = calculateNextDateOfBilling(todayISO, subscription.frequency);
+    }
+    
+    // Update subscription status
+    await getDB().collection('subscriptions').updateOne(
+      { _id: new ObjectId(subscriptionId) },
+      { 
+        $set: { 
+          status: 'inactive',
+          deliveryDate: deliveryDate,
+          nextPaymentDate: paymentDate,
+          resumedAt: new Date()
+        },
+        $push: {
+          activity: {
+            type: 'subscription_resumed',
+            date: new Date(),
+            newDeliveryDate: deliveryDate,
+            newPaymentDate: paymentDate
+          }
+        }
+      }
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Subscription resumed successfully',
+      nextDelivery: deliveryDate,
+      nextPayment: paymentDate
+    });
+  } catch (error) {
+    console.error('Error resuming subscription:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to resume subscription'
+    });
+  }
+};
+exports.pauseSubscription = async (req, res) => {
+  try {
+    const { subscriptionId, resumeDate, reason } = req.body;
+    
+    if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription ID'
+      });
+    }
+    
+    // Find subscription
+    const subscription = await getDB().collection('subscriptions').findOne({
+      _id: new ObjectId(subscriptionId),
+      status: 'active'
+    });
+    
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: 'Active subscription not found'
+      });
+    }
+    
+    // Update subscription status
+    await getDB().collection('subscriptions').updateOne(
+      { _id: new ObjectId(subscriptionId) },
+      { 
+        $set: { 
+          status: 'paused',
+          pausedAt: new Date(),
+          scheduledResumeDate: resumeDate || null,
+          pauseReason: reason || 'User requested pause'
+        },
+        $push: {
+          activity: {
+            type: 'subscription_paused',
+            date: new Date(),
+            reason: reason || 'User requested pause',
+            resumeDate: resumeDate || null
+          }
+        }
+      }
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Subscription paused successfully'
+    });
+  } catch (error) {
+    console.error('Error pausing subscription:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to pause subscription'
+    });
+  }
+};
 exports.modifySubscription = async (req, res) => {
   try {
     const { subscriptionId, pointsUsed, items } = req.body;
@@ -1492,131 +1759,6 @@ exports.updateSubscriptionAmount = async (req, res) => {
 /**
  * Pause a subscription (temporary pause)
  */
-exports.pauseSubscription = async (req, res) => {
-  try {
-    const { subscriptionId, resumeDate, reason } = req.body;
-    
-    if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid subscription ID'
-      });
-    }
-    
-    // Find subscription
-    const subscription = await getDB().collection('subscriptions').findOne({
-      _id: new ObjectId(subscriptionId),
-      status: 'active'
-    });
-    
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        error: 'Active subscription not found'
-      });
-    }
-    
-    // Update subscription status
-    await getDB().collection('subscriptions').updateOne(
-      { _id: new ObjectId(subscriptionId) },
-      { 
-        $set: { 
-          status: 'paused',
-          pausedAt: new Date(),
-          scheduledResumeDate: resumeDate || null,
-          pauseReason: reason || 'User requested pause'
-        },
-        $push: {
-          activity: {
-            type: 'subscription_paused',
-            date: new Date(),
-            reason: reason || 'User requested pause',
-            resumeDate: resumeDate || null
-          }
-        }
-      }
-    );
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Subscription paused successfully'
-    });
-  } catch (error) {
-    console.error('Error pausing subscription:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to pause subscription'
-    });
-  }
-};
-
-/**
- * Resume a paused subscription
- */
-exports.resumeSubscription = async (req, res) => {
-  try {
-    const { subscriptionId } = req.body;
-    
-    if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid subscription ID'
-      });
-    }
-    
-    // Find subscription
-    const subscription = await getDB().collection('subscriptions').findOne({
-      _id: new ObjectId(subscriptionId),
-      status: 'paused'
-    });
-    
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        error: 'Paused subscription not found'
-      });
-    }
-    
-    // Calculate new delivery and payment dates
-    const today = new Date();
-    const deliveryDate = calculateNextDate(today.toISOString().split('T')[0], subscription.frequency);
-    const paymentDate = calculateNextDate(today.toISOString().split('T')[0], subscription.frequency);
-    
-    // Update subscription status
-    await getDB().collection('subscriptions').updateOne(
-      { _id: new ObjectId(subscriptionId) },
-      { 
-        $set: { 
-          status: 'active',
-          deliveryDate: deliveryDate,
-          nextPaymentDate: paymentDate,
-          resumedAt: new Date()
-        },
-        $push: {
-          activity: {
-            type: 'subscription_resumed',
-            date: new Date(),
-            newDeliveryDate: deliveryDate,
-            newPaymentDate: paymentDate
-          }
-        }
-      }
-    );
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Subscription resumed successfully',
-      nextDelivery: deliveryDate,
-      nextPayment: paymentDate
-    });
-  } catch (error) {
-    console.error('Error resuming subscription:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to resume subscription'
-    });
-  }
-};
 
 /**
  * Get subscriptions with query filters

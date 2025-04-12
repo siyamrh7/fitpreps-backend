@@ -255,7 +255,7 @@ async function processSubscriptionPayments(date) {
         description: `Subscription Payment - ${sub._id}`,
         customerId: sub.mollieCustomerId,
         sequenceType: "recurring",
-        webhookUrl: `${process.env.API_BASE_URL}/api/subscription/payment-webhook`,
+        webhookUrl: `${process.env.BACKEND_URL}/api/subscription/payment-webhook`,
         metadata: {
           subscriptionId: sub._id.toString(),
           userId: sub.userId.toString(),
@@ -430,7 +430,7 @@ exports.purchasePoints = async (req, res) => {
       },
       description: `Purchase ${totalPoints} points and ${existingSubscription ? 'modify' : 'start'} subscription`,
       redirectUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`,
-      webhookUrl: `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
+      webhookUrl: `${process.env.BACKEND_URL}/api/subscription/first-payment-webhook`,
       sequenceType: existingSubscription ? 'recurring' : 'first', // First or recurring based on existing subscription
       metadata: paymentMetadata
     });
@@ -439,6 +439,13 @@ exports.purchasePoints = async (req, res) => {
     
     // Create subscription or update existing one
     if (existingSubscription) {
+      await getDB().collection('users').updateOne(
+        {_id: new ObjectId(userId)},
+        {
+          $set: {
+          currentPaymentId: payment.id,
+        }}
+      )
       await getDB().collection('subscriptions').updateOne(
         { _id: existingSubscription._id },
         { 
@@ -467,7 +474,7 @@ exports.purchasePoints = async (req, res) => {
       
       return res.json({
         success: true,
-        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${payment.id}`
+        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`
       });
     } else {
       // Calculate the initial delivery date and next payment date

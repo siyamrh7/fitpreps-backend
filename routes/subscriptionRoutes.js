@@ -35,7 +35,7 @@ router.post('/modify', authenticateJWT, subscriptionController.modifySubscriptio
 router.post('/cancel', authenticateJWT, subscriptionController.cancelSubscription);
 router.post('/pause', authenticateJWT, subscriptionController.pauseSubscription);
 router.post('/resume', authenticateJWT, subscriptionController.resumeSubscription);
-
+ 
 // Admin management
 router.post('/update-charge-date', authenticateAdmin, subscriptionController.updateNextChargeDate);
 router.post('/update-amount', authenticateAdmin, subscriptionController.updateSubscriptionAmount);

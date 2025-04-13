@@ -940,7 +940,6 @@ exports.getUserSubscriptionData = async (req, res) => {
         error: 'Paid subscription not found'
       });
     }
-    
     return res.status(200).json({
       success: true,
       subscription
@@ -1080,6 +1079,7 @@ exports.resumeSubscription = async (req, res) => {
     });
     
     if (!subscription) {
+      console.log('subscription id not found', subscription)
       return res.status(404).json({
         success: false,
         error: 'Paused subscription not found'
@@ -1134,6 +1134,7 @@ exports.resumeSubscription = async (req, res) => {
     });
   }
 };
+
 exports.pauseSubscription = async (req, res) => {
   try {
     const { subscriptionId, resumeDate, reason } = req.body;
@@ -1152,6 +1153,7 @@ exports.pauseSubscription = async (req, res) => {
     });
     
     if (!subscription) {
+      console.log('subscription not found')
       return res.status(404).json({
         success: false,
         error: 'Active subscription not found'
@@ -1164,7 +1166,7 @@ exports.pauseSubscription = async (req, res) => {
       { 
         $set: { 
           status: 'paused',
-          pausedAt: new Date(),
+          pausedAt: new Date(),   
           scheduledResumeDate: resumeDate || null,
           pauseReason: reason || 'User requested pause'
         },
@@ -1190,7 +1192,8 @@ exports.pauseSubscription = async (req, res) => {
       error: 'Failed to pause subscription'
     });
   }
-};
+}; 
+
 exports.modifySubscription = async (req, res) => {
   try {
     const { subscriptionId, pointsUsed, items } = req.body;

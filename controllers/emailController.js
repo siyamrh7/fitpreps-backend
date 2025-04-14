@@ -1157,8 +1157,90 @@ exports.subscriptionConfirmationController = async (mailOptions) => {
     const { to, name, profile} = mailOptions;
     const subject = 'Welkom bij Fit Preps';
     const html = `
- s:\fitpreps\fitpreps-emails-templates\email-8-dutch.html
-    `;
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Je abonnementsvorm is succesvol aangepast</title>
+</head>
+<body style="margin:0; padding:0; background:#f7f8fa; font-family:'Segoe UI', sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:720px; margin:auto; padding:60px 20px;">
+    <tr>
+      <td>
+
+        <!-- Layout met zijbalk -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-left:6px solid #FD4F01; background:#ffffff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.04);">
+          <tr>
+            <td style="padding:40px 40px 30px;">
+
+              <!-- Titelbalk -->
+              <table width="100%">
+                <tr>
+                  <td style="background:#FD4F01; padding:20px; border-radius:14px">
+                    <h1 style="margin:0; font-size:26px; font-family:'Georgia', serif; color:#fff;">Je abonnementsvorm is succesvol aangepast</h1>
+                    <p style="margin:10px 0 0; font-size:15px; color:#ffe9de;">Je aanvraag is goedgekeurd en de wijziging is direct doorgevoerd.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Inhoud -->
+              <div style="margin-top:30px; font-size:15px; line-height:1.7; color:#333;">
+                <p>Hi <strong>${name}</strong>,</p>
+
+                <p>
+                  Goed nieuws: je verzoek om je abonnementsvorm aan te passen is goedgekeurd en de wijziging is direct doorgevoerd in je account.
+                </p>
+
+                <p>
+                  Vanaf nu geldt je nieuwe abonnementsvorm en kun je daar je maaltijden en levermomenten op afstemmen zoals je gewend bent.
+                </p>
+              </div>
+
+              <!-- Wat nu box -->
+              <div style="margin-top:40px; background:#fdf5f2; border-radius:10px; padding:20px 24px; border-left:5px solid #FD4F01;">
+                <h3 style="margin:0 0 10px; font-size:16px; color:#FD4F01;">Wat nu?</h3>
+                <p style="margin:0; font-size:15px; color:#444;">
+                  Log in op je account om te zien wat er veranderd is en om je maaltijden te kiezen voor de komende levering.
+                </p>
+              </div>
+
+              <!-- Knop -->
+              <div style="margin-top:35px; text-align:left;">
+                <a href="${profile}" style="background-color:#FD4F01; color:#ffffff; padding:14px 28px; font-size:15px; text-decoration:none; font-weight:600; border-radius:8px; display:inline-block;">
+                  Naar Mijn Account
+                </a>
+              </div>
+
+              <!-- Ondersteuning & afsluiting -->
+              <div style="margin-top:40px; font-size:15px; color:#555; line-height:1.6;">
+                <p>
+                  Heb je vragen over je nieuwe abonnement of hulp nodig bij het kiezen van maaltijden? Laat het ons weten – we helpen je graag verder via 
+                  <a href="mailto:[klantenservice e-mailadres]" style="color:#FD4F01;">[klantenservice e-mailadres]</a>.
+                </p>
+
+                <p style="margin-top:24px;">
+                  Bedankt voor je vertrouwen in Fit Preps – en veel plezier met je vernieuwde abonnement!
+                </p>
+
+                <p style="margin:0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
+              </div>
+
+            </td>
+          </tr>
+        </table>
+
+        <!-- Footer -->
+        <p style="margin-top:30px; font-size:12px; color:#999; text-align:center;">© 2025 Fit Preps • Alle rechten voorbehouden</p>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+ `;
     await sendEmail(to, subject, html);
   } catch (error) {
     console.error('Error sending subscription adjusted email:', error);

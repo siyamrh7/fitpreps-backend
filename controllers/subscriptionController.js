@@ -381,7 +381,7 @@ exports.purchasePoints = async (req, res) => {
             pointsPerCycle: parseInt(totalPoints),
             amountPerCycle: parseFloat(amount),
             frequency: frequency,
-            paymentStatus: "pending",
+            paymentStatus: payment.status,
             updatedAt: today,
             currentPaymentId: payment.id,
             data: data || existingSubscription.data,
@@ -402,7 +402,7 @@ exports.purchasePoints = async (req, res) => {
       
       return res.json({
         success: true,
-        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`
+        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}&paymentStatus=${payment.status}`,
       });
     } else {
       // Calculate the initial delivery date and next payment date
@@ -480,7 +480,7 @@ exports.firstPaymentWebhook = async (req, res) => {
     const { userId, pointsToAdd, frequency, type, existingSubscriptionId, isModification } = payment.metadata;
     const db = getDB();
     
-    if (payment.status === 'paid') {
+    if (payment.status == 'paid') {
       if (isModification && existingSubscriptionId) {
         // This is a modification to an existing subscription
         await db.collection('subscriptions').updateOne(

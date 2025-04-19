@@ -10,6 +10,37 @@ const emailQueue = require('../controllers/emailQueue');
 function btoa(string) {
   return Buffer.from(string).toString('base64');
 }
+const plans = {
+  weekly: {
+      starter: { price: 64.95 + 6.95, originalPrice: 64.95 + 6.95, points: 650, bonus: 60 },
+      balance: { price: 124.95, originalPrice: 124.95, points: 1250, bonus: 120 },
+      elite: { price: 249.95, originalPrice: 249.95, points: 2500, bonus: 250 },
+  },
+  monthly: {
+      starter: { price: 124.95, originalPrice: 124.95, points: 1250, bonus: 120 },
+      balance: { price: 249.95, originalPrice: 249.95, points: 2500, bonus: 250 },
+      elite: { price: 499.95, originalPrice: 499.95, points: 5000, bonus: 500 },
+  },
+};
+function findPriceByPoints(totalPoints, frequency) {
+    // Default to weekly if frequency not specified
+    frequency = frequency || 'weekly';
+    
+    if (!plans[frequency]) {
+        throw new Error('Invalid frequency');
+    }
+
+    const frequencyPlans = plans[frequency];
+    
+    // Find matching plan based on total points (points + bonus)
+    for (const [tier, plan] of Object.entries(frequencyPlans)) {
+        if ((plan.points + plan.bonus) === totalPoints) {
+            return parseFloat(plan.price);
+        }
+    }
+    
+    throw new Error('No matching plan found for the given points');
+}
 
 // Configure the cron job to run at 1 AM every day
 cron.schedule("0 1 * * *", processSubscriptions);
@@ -491,7 +522,8 @@ async function processSubscriptionPayments(date) {
       const payment = await mollieClient.payments.create({
         amount: {
           currency: "EUR",
-          value: sub.amountPerCycle.toFixed(2),
+          // value: sub.amountPerCycle.toFixed(2),
+          value: findPriceByPoints(sub.pointsPerCycle, sub.frequency).toFixed(2),
         },
         description: `Subscription Payment - ${sub._id}`,
         customerId: sub.mollieCustomerId,
@@ -2446,4 +2478,6 @@ exports.getSubscriptionById = async (req, res) => {
 //     });
 //   }
 // };
+
+// Helper function to find price based on total points
 

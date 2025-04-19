@@ -1,6 +1,6 @@
 require('dotenv').config();
 const Bull = require('bull');
-const { orderEmailController, contactEmailController, orderEmailController2,requestPasswordResetController, newAccountEmailController,
+const { orderEmailController, contactEmailController, orderEmailController2, requestPasswordResetController, newAccountEmailController,
   subscriptionWelcomeController,
   subscriptionConfirmationController,
   weeklyMealReminderController,
@@ -8,8 +8,10 @@ const { orderEmailController, contactEmailController, orderEmailController2,requ
   monthlyRenewalReminderController,
   subscriptionCancelledController,
   subscriptionPausedController,
-  subscriptionAdjustedController
- } = require('./emailController');
+  subscriptionAdjustedController,
+  universalReminderController,
+  universalReminderController2
+} = require('./emailController');
 
 // Initialize the email queue
 const emailQueue = new Bull('emailQueue', {
@@ -17,43 +19,53 @@ const emailQueue = new Bull('emailQueue', {
 });
 
 // Email processing logic
-emailQueue.process(10,async (job) => {
-  const { orderData, title, description ,emailType,mailOptions,user,password} = job.data;
+emailQueue.process(10, async (job) => {
+  const { orderData, title, description, emailType, mailOptions, user, password } = job.data;
 
   try {
-    if(emailType=="order"){
-      await orderEmailController(orderData,title,description);
+    if (emailType == "order") {
+      await orderEmailController(orderData, title, description);
     }
-    if(emailType=="orderOwner"){
-      await orderEmailController2(orderData,title,description);
+    if (emailType == "orderOwner") {
+      await orderEmailController2(orderData, title, description);
     }
-    if(emailType=="contact"){
+    if (emailType == "contact") {
       await contactEmailController(mailOptions);
     }
-    if(emailType=="reset-password"){
+    if (emailType == "reset-password") {
       await requestPasswordResetController(mailOptions);
     }
-    if(emailType=="new-account"){
-      await newAccountEmailController(user,password);
+    if (emailType == "new-account") {
+      await newAccountEmailController(user, password);
     }
     //subscription emails
-    if(emailType=="sub-welcome"){
+    if (emailType == "sub-welcome") {
       await subscriptionWelcomeController(mailOptions);
     }
-    if(emailType=="sub-confirmation"){
+    if (emailType == "sub-confirmation") {
+      await subscriptionWelcomeController(mailOptions);
       await subscriptionConfirmationController(mailOptions);
-      // await weeklyMealReminderController(mailOptions);
-      // await sundayMealReminderController(mailOptions);
+      await universalReminderController(mailOptions);
+      await universalReminderController2(mailOptions);
+      await subscriptionPausedController(mailOptions);
+      await subscriptionCancelledController(mailOptions);
+
     }
-    if(emailType=="sub-cancel"){
+    if (emailType == "sub-cancel") {
 
       await subscriptionCancelledController(mailOptions);
     }
-    if(emailType=="sub-pause"){
+    if (emailType == "sub-pause") {
 
       await subscriptionPausedController(mailOptions);
     }
-  
+    if (emailType == "sub-reminder") {
+      await universalReminderController(mailOptions);
+    }
+    if (emailType == "sub-reminder-monthly") {
+      await universalReminderController2(mailOptions);
+    }
+
   } catch (error) {
     console.error(`Error sending email for order #${orderData._id}:`, error);
   }

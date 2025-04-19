@@ -52,7 +52,7 @@ cron.schedule('0 9 * * 0', async () => {
               // Send email reminder
               await emailQueue.add(
                 { 
-                  emailType: "meal-reminder-sunday", 
+                  emailType: "sub-reminder", 
                   mailOptions: { 
                     to: subscription.data._billing_email,
                     name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
@@ -95,7 +95,7 @@ cron.schedule('0 9 * * 0', async () => {
               // Send email reminder
               await emailQueue.add(
                 { 
-                  emailType: "meal-reminder-sunday", 
+                  emailType: "sub-reminder-monthly", 
                   mailOptions: { 
                     to: subscription.data._billing_email,
                     name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
@@ -159,7 +159,7 @@ cron.schedule('0 9 * * 5', async () => {
               // Send urgent email reminder
               await emailQueue.add(
                 { 
-                  emailType: "meal-reminder-friday", 
+                  emailType: "sub-reminder", 
                   mailOptions: { 
                     to: subscription.data._billing_email,
                     name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
@@ -202,7 +202,7 @@ cron.schedule('0 9 * * 5', async () => {
               // Send email reminder
               await emailQueue.add(
                 { 
-                  emailType: "meal-reminder-friday", 
+                  emailType: "sub-reminder-monthly", 
                   mailOptions: { 
                     to: subscription.data._billing_email,
                     name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
@@ -979,7 +979,7 @@ exports.paymentWebhook = async (req, res) => {
       //TESTING CHANGE START
       await db.collection('subscriptions').updateOne(
         { _id: subscription._id },
-        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false} }
+        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:subscription.nextPaymentDate        } }
       );
       //TESTING CHANGE END
       await db.collection('users').updateOne(
@@ -1341,6 +1341,12 @@ exports.startSubscription = async (req, res) => {
           error: sendCloudError.message,
           timestamp: new Date()
         });
+      }
+      if(paymentData.pendingCancellationConfirmed){
+        await db.collection('subscriptions').updateOne(
+          { _id: paymentData._id },
+          { $set: { status: 'cancelled' } }
+        );
       }
       return res.status(200).json({
         success: true,

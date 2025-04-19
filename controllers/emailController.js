@@ -1155,7 +1155,7 @@ const sendEmail = async (to, subject, html) => {
 exports.subscriptionConfirmationController = async (mailOptions) => {
   try {
     const { to, name, profile} = mailOptions;
-    const subject = 'Welkom bij Fit Preps';
+    const subject = 'Je abonnementsvorm is succesvol aangepast';
     const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -1179,7 +1179,7 @@ exports.subscriptionConfirmationController = async (mailOptions) => {
               <table width="100%">
                 <tr>
                   <td style="background:#FD4F01; padding:20px; border-radius:14px">
-                    <h1 style="margin:0; font-size:26px; font-family:'Georgia', serif; color:#fff;">Je abonnementsvorm is succesvol aangepast</h1>
+                    <h1 style="margin:0; font-size:26px;  color:#fff;">Je abonnementsvorm is succesvol aangepast</h1>
                     <p style="margin:10px 0 0; font-size:15px; color:#ffe9de;">Je aanvraag is goedgekeurd en de wijziging is direct doorgevoerd.</p>
                   </td>
                 </tr>
@@ -1217,7 +1217,7 @@ exports.subscriptionConfirmationController = async (mailOptions) => {
               <div style="margin-top:40px; font-size:15px; color:#555; line-height:1.6;">
                 <p>
                   Heb je vragen over je nieuwe abonnement of hulp nodig bij het kiezen van maaltijden? Laat het ons weten – we helpen je graag verder via 
-                  <a href="mailto:[klantenservice e-mailadres]" style="color:#FD4F01;">[klantenservice e-mailadres]</a>.
+                  <a href="mailto:info@fitpreps.nl" style="color:#FD4F01;">info@fitpreps.nl</a>.
                 </p>
 
                 <p style="margin-top:24px;">
@@ -1278,7 +1278,7 @@ exports.subscriptionWelcomeController = async (mailOptions) => {
               <table width="100%">
                 <tr>
                   <td style="background:#FD4F01; padding:20px; border-radius:14px">
-                    <h1 style="margin:0; font-size:26px; font-family:'Georgia', serif; color:#fff;">Je abonnementsvorm is succesvol aangepast</h1>
+                    <h1 style="margin:0; font-size:26px; color:#fff;">Je abonnementsvorm is succesvol aangepast</h1>
                     <p style="margin:10px 0 0; font-size:15px; color:#ffe9de;">Je aanvraag is goedgekeurd en de wijziging is direct doorgevoerd.</p>
                   </td>
                 </tr>
@@ -1316,7 +1316,7 @@ exports.subscriptionWelcomeController = async (mailOptions) => {
               <div style="margin-top:40px; font-size:15px; color:#555; line-height:1.6;">
                 <p>
                   Heb je vragen over je nieuwe abonnement of hulp nodig bij het kiezen van maaltijden? Laat het ons weten – we helpen je graag verder via 
-                  <a href="mailto:support@fitpreps.nl" style="color:#FD4F01;">support@fitpreps.nl</a>.
+                  <a href="mailto:info@fitpreps.nl" style="color:#FD4F01;">info@fitpreps.nl</a>.
                 </p>
 
                 <p style="margin-top:24px;">
@@ -1395,7 +1395,7 @@ exports.weeklyMealReminderController = async (mailOptions) => {
 
         <!-- Call to Action -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${mealPlan}" style="background-color:#FD4F01; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:8px; display:inline-block; font-weight:bold;">
+          <a href="${process.env.FRONTEND_URI}" style="background-color:#FD4F01; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:8px; display:inline-block; font-weight:bold;">
             Kies Mijn Maaltijden
           </a>
         </div>
@@ -1489,7 +1489,7 @@ exports.sundayMealReminderController = async (mailOptions) => {
               <p style="margin:0 0 15px; font-size:16px; color:#333;">
                 Log in op je account om je selectie te maken:
               </p>
-              <a href="${mealPlan}" style="background-color:#FD4F01; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
+              <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD4F01; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
                 Maak mijn selectie
               </a>
             </td>
@@ -1593,7 +1593,7 @@ exports.monthlyRenewalReminderController = async (mailOptions) => {
           <tr>
             <td>
               <p style="margin:0 0 20px; font-size:15px; color:#333;">Pas je selectie aan via je account:</p>
-              <a href="${subscription}" style="background-color:#FD4F01; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; text-decoration:none; border-radius:30px; display:inline-block;">
+              <a href="${process.env.FRONTEND_URI}" style="background-color:#FD4F01; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; text-decoration:none; border-radius:30px; display:inline-block;">
                 Selectie Aanpassen
               </a>
             </td>
@@ -1632,7 +1632,7 @@ exports.monthlyRenewalReminderController = async (mailOptions) => {
 // Subscription cancelled email
 exports.subscriptionCancelledController = async (mailOptions) => {
   try {
-    const { to, name, endDate } = mailOptions;
+    const { to, name } = mailOptions;
     const subject = 'Laatste Kansbevestiging van opgezegd abonnement';
     const html = `
       <!DOCTYPE html>
@@ -1682,7 +1682,7 @@ exports.subscriptionCancelledController = async (mailOptions) => {
             <td>
               <h3 style="margin:0 0 15px; font-size:18px; color:#FD4F01;">📦 Wat gebeurt er nu?</h3>
               <ul style="padding-left:20px; margin:0; color:#444; font-size:15px; line-height:1.7;">
-                <li><strong>Laatste levering:</strong> in de week van <strong>[datum]</strong>, op je gekozen dag</li>
+                <li><strong>Laatste levering:</strong> op je gekozen dag</li>
                 <li><strong>Laatste betaling:</strong> wordt automatisch verwerkt voor deze levering</li>
               </ul>
               <p style="margin-top:16px; font-size:15px;">
@@ -1737,7 +1737,7 @@ exports.subscriptionCancelledController = async (mailOptions) => {
 // Subscription paused email
 exports.subscriptionPausedController = async (mailOptions) => {
   try {
-    const { to, name, pauseStartDate, pauseEndDate, ResumeLink } = mailOptions;
+    const { to, name,  ResumeLink } = mailOptions;
     const subject = 'Abonnement Gepauzeerd Confirmation';
     const html = `
      <!DOCTYPE html>

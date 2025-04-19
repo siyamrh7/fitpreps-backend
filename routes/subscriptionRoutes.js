@@ -17,8 +17,8 @@ router.post('/payment-webhook', subscriptionController.paymentWebhook);
 // User subscription routes
 router.get('/user/:userId', subscriptionController.getUserSubscriptionData);
 router.post('/update-subscription-data', authenticateJWT, subscriptionController.updateSubscriptionData);
-router.get('/user-subscriptions/:userId', subscriptionController.getUserSubscriptions);
-router.get('/details/:subscriptionId', subscriptionController.getSubscriptionDetails);
+// router.get('/user-subscriptions/:userId', subscriptionController.getUserSubscriptions);
+// router.get('/details/:subscriptionId', subscriptionController.getSubscriptionDetails);
 
 // Admin routes
 router.put('/status', authenticateAdmin, subscriptionController.updateSubscriptionStatus);
@@ -27,17 +27,17 @@ router.delete('/', authenticateAdmin, subscriptionController.deleteSubscriptions
 router.get('/', authenticateAdmin, subscriptionController.getSubscriptions);
 router.get('/:id', authenticateAdmin, subscriptionController.getSubscriptionById);
 
-router.get('/dashboard', authenticateAdmin, subscriptionController.getSubscriptionDashboard);
-router.get('/stats', authenticateAdmin, subscriptionController.getSubscriptionStats);
+// router.get('/dashboard', authenticateAdmin, subscriptionController.getSubscriptionDashboard);
+// router.get('/stats', authenticateAdmin, subscriptionController.getSubscriptionStats);
 
 // Subscription management
-router.post('/modify', authenticateJWT, subscriptionController.modifySubscription);
-router.post('/cancel', authenticateJWT, subscriptionController.cancelSubscription);
+// router.post('/modify', authenticateJWT, subscriptionController.modifySubscription);
+router.post('/cancel', subscriptionController.cancelSubscription);
 router.post('/pause', authenticateJWT, subscriptionController.pauseSubscription);
-router.post('/resume', authenticateJWT, subscriptionController.resumeSubscription);
+router.post('/resume', subscriptionController.resumeSubscription);
  
 // Admin management
-router.post('/update-charge-date', authenticateAdmin, subscriptionController.updateNextChargeDate);
-router.post('/update-amount', authenticateAdmin, subscriptionController.updateSubscriptionAmount);
+// router.post('/update-charge-date', authenticateAdmin, subscriptionController.updateNextChargeDate);
+// router.post('/update-amount', authenticateAdmin, subscriptionController.updateSubscriptionAmount);
 
 module.exports = router;

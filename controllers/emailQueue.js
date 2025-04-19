@@ -1,6 +1,15 @@
 require('dotenv').config();
 const Bull = require('bull');
-const { orderEmailController, contactEmailController, orderEmailController2,requestPasswordResetController, newAccountEmailController } = require('./emailController');
+const { orderEmailController, contactEmailController, orderEmailController2,requestPasswordResetController, newAccountEmailController,
+  subscriptionWelcomeController,
+  subscriptionConfirmationController,
+  weeklyMealReminderController,
+  sundayMealReminderController,
+  monthlyRenewalReminderController,
+  subscriptionCancelledController,
+  subscriptionPausedController,
+  subscriptionAdjustedController
+ } = require('./emailController');
 
 // Initialize the email queue
 const emailQueue = new Bull('emailQueue', {
@@ -26,6 +35,23 @@ emailQueue.process(10,async (job) => {
     }
     if(emailType=="new-account"){
       await newAccountEmailController(user,password);
+    }
+    //subscription emails
+    if(emailType=="sub-welcome"){
+      await subscriptionWelcomeController(mailOptions);
+    }
+    if(emailType=="sub-confirmation"){
+      await subscriptionConfirmationController(mailOptions);
+      // await weeklyMealReminderController(mailOptions);
+      // await sundayMealReminderController(mailOptions);
+    }
+    if(emailType=="sub-cancel"){
+
+      await subscriptionCancelledController(mailOptions);
+    }
+    if(emailType=="sub-pause"){
+
+      await subscriptionPausedController(mailOptions);
     }
   
   } catch (error) {

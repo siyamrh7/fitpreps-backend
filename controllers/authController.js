@@ -6,6 +6,7 @@ const { unserialize } = require('php-serialize');
 const crypto = require('crypto');
 const emailQueue = require('./emailQueue');
 const addUserToKlaviyo = require('./klaviyoController');
+const { ObjectId } = require('mongodb');
 // Controller to handle user registration
 exports.register = async (req, res) => {
   try {
@@ -310,5 +311,42 @@ exports.resetPassword = async (req, res) => {
     res.status(200).json({ message: 'Password reset successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error resetting password', error });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.userId; // This comes from the auth middleware
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    const usersCollection = getDB().collection('users');
+    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = hasher.CheckPassword(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash the new password
+    const hashedPassword = hasher.HashPassword(newPassword);
+
+    // Update the password
+    await usersCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { password: hashedPassword } }
+    );
+
+    res.status(200).json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error changing password', error });
   }
 };

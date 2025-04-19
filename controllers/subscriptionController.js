@@ -866,6 +866,11 @@ exports.firstPaymentWebhook = async (req, res) => {
         console.log(`Subscription ${existingSubscriptionId} modified and ${pointsToAdd} points added to user ${userId}`);
       } 
       else if (type === 'points-subscription-setup') {
+     
+        // Find the subscription
+        const subscription = await db.collection('subscriptions').findOne({ 
+          currentPaymentId: paymentId 
+        });
         await db.collection('users').updateOne(
           { _id: new ObjectId(userId) },
           { 
@@ -877,11 +882,6 @@ exports.firstPaymentWebhook = async (req, res) => {
             }
           }
         );
-        // Find the subscription
-        const subscription = await db.collection('subscriptions').findOne({ 
-          currentPaymentId: paymentId 
-        });
-        
         if (!subscription) {
           console.error(`No subscription found for payment ${paymentId}`);
           return res.status(200).send('Webhook processed - no subscription found');

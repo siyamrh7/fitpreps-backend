@@ -767,8 +767,8 @@ exports.purchasePoints = async (req, res) => {
             lastPaymentDate: today.toISOString().split('T')[0],
             deliveryDate: null,
             mealSelected:false,
-            lastPlanEndDate:existingSubscription.nextPaymentDate,
-            planEndDate:calculateNextDate(existingSubscription.nextPaymentDate, frequency),
+            lastPlanEndDate:existingSubscription.planEndDate,
+            planEndDate:calculateNextDate(existingSubscription.planEndDate, frequency),
           },
           $push: {
             paymentHistory: {
@@ -1276,7 +1276,7 @@ exports.startSubscription = async (req, res) => {
         },
         { 
           $set: { 
-            startDate,
+            // startDate,
             //TESTING CHANGE START
             deliveryDate: paymentData.frequency === "weekly" ? formattedDeliveryDate : paymentData.nextPaymentDate,
             //  deliveryDate: startDate,

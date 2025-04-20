@@ -317,8 +317,8 @@ exports.resetPassword = async (req, res) => {
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const userId = req.userId; // This comes from the auth middleware
-
+    const userId = req.user.userId; // This comes from the auth middleware
+   
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Current password and new password are required' });
     }

@@ -275,7 +275,7 @@ function calculateNextDate(dateString, frequency) {
   return date.toISOString().split('T')[0];
 }
 
-function calculateNextDateOfBilling(dateString, frequency) {
+function calculateNextDateOfBillingMonday(dateString, frequency) {
   const date = DateTime.fromISO(dateString, { zone: 'Europe/Amsterdam' });
 
   if (frequency === 'daily') {
@@ -285,6 +285,39 @@ function calculateNextDateOfBilling(dateString, frequency) {
     // Move to the *next* Monday (skip this week's Monday if today is Monday)
     const currentWeekday = date.weekday; // 1 = Monday
     const daysToAdd = 8 - currentWeekday; // e.g., if Monday (1), then add 7
+    return date.plus({ days: daysToAdd }).toISODate();
+
+  } else if (frequency === 'monthly') {
+    // Just add 30 days
+    return date.plus({ days: 30 }).toISODate();
+  }
+
+  // fallback
+  return date.toISODate();
+}
+function calculateNextDateOfBilling(dateString, frequency) {
+  const date = DateTime.fromISO(dateString, { zone: 'Europe/Amsterdam' });
+
+  if (frequency === 'daily') {
+    return date.plus({ days: 1 }).toISODate();
+
+  } else if (frequency === 'weekly') {
+    // Always return the upcoming Monday
+    // If today is Sunday (7), add 1 day to get to Monday
+    // If today is Monday (1), add 7 days to get to next Monday
+    // For any other day, calculate days until next Monday
+    const currentWeekday = date.weekday; // 1 = Monday, 7 = Sunday
+    
+    let daysToAdd;
+    if (currentWeekday === 7) { // Sunday
+      daysToAdd = 1; // This Monday
+    } else if (currentWeekday === 1) { // Monday
+      daysToAdd = 7; // Next Monday
+    } else {
+      // For Tuesday (2) through Saturday (6), calculate days until next Monday
+      daysToAdd = 8 - currentWeekday;
+    }
+    
     return date.plus({ days: daysToAdd }).toISODate();
 
   } else if (frequency === 'monthly') {
@@ -734,7 +767,8 @@ exports.purchasePoints = async (req, res) => {
             lastPaymentDate: today.toISOString().split('T')[0],
             deliveryDate: null,
             mealSelected:false,
-            lastPlanEndDate:existingSubscription.nextPaymentDate
+            lastPlanEndDate:existingSubscription.nextPaymentDate,
+            planEndDate:calculateNextDate(existingSubscription.nextPaymentDate, frequency),
           },
           $push: {
             paymentHistory: {
@@ -774,12 +808,14 @@ exports.purchasePoints = async (req, res) => {
         mealSelected:false,
         // deliveryDate: deliveryDate,
         //TESTING START
-        nextPaymentDate: nextPaymentDate,
+        nextPaymentDate: frequency === "weekly" ? startDate : nextPaymentDate,
         //  nextPaymentDate: today.toISOString().split('T')[0],
 
         //TESTING END
         lastPaymentDate: today.toISOString().split('T')[0],
         currentPaymentId: payment.id,
+        lastPlanEndDate:startDate,
+        planEndDate:nextPaymentDate,
         data: data || {},
         paymentHistory: [{
           paymentId: payment.id,
@@ -1011,7 +1047,7 @@ exports.paymentWebhook = async (req, res) => {
       //TESTING CHANGE START
       await db.collection('subscriptions').updateOne(
         { _id: subscription._id },
-        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:subscription.nextPaymentDate        } }
+        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:subscription.nextPaymentDate,planEndDate:nextPaymentDate        } }
       );
       //TESTING CHANGE END
       await db.collection('users').updateOne(
@@ -1242,7 +1278,7 @@ exports.startSubscription = async (req, res) => {
           $set: { 
             startDate,
             //TESTING CHANGE START
-            deliveryDate: formattedDeliveryDate,
+            deliveryDate: paymentData.frequency === "weekly" ? formattedDeliveryDate : paymentData.nextPaymentDate,
             //  deliveryDate: startDate,
 
             //TESTING CHANGE END
@@ -1621,6 +1657,7 @@ exports.resumeSubscription = async (req, res) => {
           currentPaymentId: payment.id,
         }}
       )
+      const nextPaymentDate = calculateNextDateOfBilling(resumeDate ||today.toISOString().split('T')[0], subscription.frequency);
 
       await getDB().collection('subscriptions').updateOne(
         { _id: new ObjectId(subscription._id) },
@@ -1631,9 +1668,11 @@ exports.resumeSubscription = async (req, res) => {
             updatedAt: today,
             currentPaymentId: payment.id,
             data: subscription.data,
-            nextPaymentDate: calculateNextDateOfBilling(resumeDate ||today.toISOString().split('T')[0], subscription.frequency),
+            nextPaymentDate: subscription.frequency === "weekly" ? resumeDate  : nextPaymentDate,
             lastPaymentDate: today.toISOString().split('T')[0],
-            deliveryDate:null
+            deliveryDate:null,
+            planEndDate:nextPaymentDate,
+            lastPlanEndDate:resumeDate
           },
           $push: {
             paymentHistory: {

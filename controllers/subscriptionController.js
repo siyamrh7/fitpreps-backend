@@ -1885,7 +1885,7 @@ exports.cancelSubscription = async (req, res) => {
     );
     setImmediate(async () =>
       await emailQueue.add(
-        { emailType: "sub-cancel", mailOptions: { to: subscription.data._billing_email,
+        { emailType: subscription.frequency == "weekly" ? "sub-cancel-weekly" : "sub-cancel-monthly", mailOptions: { to: subscription.data._billing_email,
           
           name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
 

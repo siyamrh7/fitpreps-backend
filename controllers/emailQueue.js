@@ -13,7 +13,8 @@ const { orderEmailController, contactEmailController, orderEmailController2, req
   universalReminderController2,
   weeklySubscriptionStartedController,
   monthlySubscriptionStartedController,
-  orderConfirmationEmailControllerWeekly
+  orderConfirmationEmailControllerWeekly,
+  orderConfirmationEmailControllerMonthly
 } = require('./emailController');
 
 // Initialize the email queue

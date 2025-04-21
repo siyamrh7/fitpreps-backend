@@ -10,7 +10,10 @@ const { orderEmailController, contactEmailController, orderEmailController2, req
   subscriptionPausedController,
   subscriptionAdjustedController,
   universalReminderController,
-  universalReminderController2
+  universalReminderController2,
+  weeklySubscriptionStartedController,
+  monthlySubscriptionStartedController,
+  orderConfirmationEmailControllerWeekly
 } = require('./emailController');
 
 // Initialize the email queue
@@ -39,16 +42,25 @@ emailQueue.process(10, async (job) => {
       await newAccountEmailController(user, password);
     }
     //subscription emails
-    if (emailType == "sub-welcome") {
-      await subscriptionWelcomeController(mailOptions);
+    if (emailType == "sub-welcome-weekly") {
+      await weeklySubscriptionStartedController(mailOptions);
+    }
+    if (emailType == "sub-welcome-monthly") {
+      await monthlySubscriptionStartedController(mailOptions);
+    }
+    if (emailType == "order-confirmation-weekly") {
+      await orderConfirmationEmailControllerWeekly(mailOptions);
+    }
+    if (emailType == "order-confirmation-monthly") {
+      await orderConfirmationEmailControllerMonthly(mailOptions);
     }
     if (emailType == "sub-confirmation") {
-      await subscriptionWelcomeController(mailOptions);
-      await subscriptionConfirmationController(mailOptions);
-      await universalReminderController(mailOptions);
-      await universalReminderController2(mailOptions);
-      await subscriptionPausedController(mailOptions);
-      await subscriptionCancelledController(mailOptions);
+      // await subscriptionWelcomeController(mailOptions);
+      // await subscriptionConfirmationController(mailOptions);
+      // await universalReminderController(mailOptions);
+      // await universalReminderController2(mailOptions);
+      // await subscriptionPausedController(mailOptions);
+      // await subscriptionCancelledController(mailOptions);
 
     }
     if (emailType == "sub-cancel") {

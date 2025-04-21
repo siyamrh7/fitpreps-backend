@@ -1335,6 +1335,210 @@ exports.subscriptionWelcomeController = async (mailOptions) => {
   }
 };
 
+// Weekly subscription started email (Nederlands)
+exports.weeklySubscriptionStartedController = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Je wekelijkse abonnement is gestart – Tijd om je maaltijden te kiezen!';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Je wekelijkse abonnement is gestart</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD4F01; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Je wekelijkse abonnement is gestart!</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Tijd om je maaltijden te kiezen</p>
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Bedankt voor je bestelling en het starten van je wekelijkse Fit Preps abonnement!
+          Je betaling is succesvol verwerkt en je abonnement is nu actief.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD4F01; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD4F01; font-size:18px;">Wat gebeurt er nu?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Je punten zijn toegevoegd aan je account.</li>
+            <li style="margin-bottom:10px;">Je kunt nu je maaltijden kiezen én een leverdag selecteren binnen de week van jouw gekozen startdatum.</li>
+            <li style="margin-bottom:0;">Levering is mogelijk op maandag t/m vrijdag binnen die week.</li>
+          </ul>
+        </div>
+        
+        <div style="background-color:#fffbf0; border:2px dashed #FD4F01; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Belangrijk:</h3>
+          <p style="margin-bottom:0; font-size:16px;">
+            Zorg ervoor dat je jouw keuze op tijd maakt, zodat je levering goed wordt ingepland.<br>
+            Heb je geen selectie gemaakt? Dan ontvang je vanaf week 2 automatisch dezelfde maaltijden op dezelfde leverdag als de week ervoor.
+          </p>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          <strong>Herinneringen:</strong><br>
+          Als je je maaltijden nog niet hebt gekozen, ontvang je op vrijdag en zondag automatisch een herinnering.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen? Neem gerust contact met ons op via <a href="mailto:info@fitpreps.nl" style="color:#FD4F01; text-decoration:underline;">info@fitpreps.nl</a> of log in op je account.
+        </p>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD4F01; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Kies Mijn Maaltijden
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Sportieve groet,<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD4F01; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD4F01; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © 2025 Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending weekly subscription started email:', error);
+    throw error;
+  }
+};
+
+// Monthly subscription started email (Nederlands)
+exports.monthlySubscriptionStartedController = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Je maandabonnement is gestart – Je kunt nu je maaltijden kiezen!';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Je maandabonnement is gestart</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header with Image -->
+    <tr>
+      <td style="background-color:#FD4F01; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Je maandabonnement is gestart!</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Je kunt nu je maaltijden kiezen</p>
+      </td>
+    </tr>
+    
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744426962/fitpreps/u2xmo1qiczex0cce4mos.webp" alt="Fit Preps Maaltijden" style="width:100%; height:auto; display:block;">
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Bedankt voor je bestelling en welkom bij je maandelijkse Fit Preps abonnement!
+          Je betaling is succesvol verwerkt en je abonnement is nu actief.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD4F01; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD4F01; font-size:18px;">Wat gebeurt er nu?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Je punten zijn toegevoegd aan je account.</li>
+            <li style="margin-bottom:10px;">Je kunt nu je maaltijden kiezen én een leverdag selecteren voor deze maand.</li>
+            <li style="margin-bottom:0;">De leverdag moet plaatsvinden tussen nu en het einde van je abonnementsmaand (levering van maandag t/m vrijdag mogelijk).</li>
+          </ul>
+        </div>
+        
+        <div style="background-color:#fffbf0; border:2px dashed #FD4F01; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Let op:</h3>
+          <p style="margin-bottom:0; font-size:16px;">
+            Je ontvangt één levering per maand, dus kies zorgvuldig je maaltijden en leverdatum.<br>
+            We sturen je een herinnering als je dit nog niet hebt gedaan.
+          </p>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen? Je kunt ons altijd bereiken via <a href="mailto:info@fitpreps.nl" style="color:#FD4F01; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD4F01; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Kies Mijn Maaltijden
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Veel plezier met je maaltijden!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD4F01; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD4F01; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © 2025 Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly subscription started email:', error);
+    throw error;
+  }
+};
+
 // Weekly meal reminder email
 exports.weeklyMealReminderController = async (mailOptions) => {
   try {
@@ -2097,6 +2301,200 @@ exports.universalReminderController2 = async (mailOptions) => {
     await sendEmail(to, subject, html);
   } catch (error) {
     console.error('Error sending reminder email:', error);
+    throw error;
+  }
+};
+
+// Order confirmation email (Nederlands)
+exports.orderConfirmationEmailControllerWeekly = async (mailOptions) => {
+  try {
+    const { to, name, deliveryDate } = mailOptions;
+    const subject = 'Je bestelling is succesvol geplaatst – dit is je leverdatum!';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Je bestelling is succesvol geplaatst</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD4F01; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Je bestelling is succesvol geplaatst!</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">We gaan meteen voor je aan de slag</p>
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Bedankt voor je bestelling bij Fit Preps – we gaan meteen voor je aan de slag!
+          Je bestelling is succesvol verwerkt en staat ingepland voor levering op:
+        </p>
+        
+        <!-- Delivery Date Highlight -->
+        <div style="background-color:#f0f9f4; border:2px solid #FD4F01; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h2 style="margin:0; color:#FD4F01; font-size:22px;">${deliveryDate}</h2>
+        </div>
+        
+        <!-- Delivery Information -->
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD4F01; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD4F01; font-size:18px;">Leverinformatie:</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Je pakket wordt geleverd op de dag van levering tussen 17:00 en 22:00 uur.</li>
+            <li style="margin-bottom:0;">Zodra je bestelling is meegegeven aan de bezorgdienst, ontvang je op de dag van levering een e-mail met je track & trace code, zodat je precies kunt volgen wanneer je jouw maaltijden kunt verwachten.</li>
+          </ul>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Zorg ervoor dat je beschikbaar bent op het opgegeven adres tijdens dit tijdvak. Heb je vragen over je levering? Mail ons gerust via <a href="mailto:info@fitpreps.nl" style="color:#FD4F01; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <!-- Order Tracking Button (Optional) -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/orders" style="background-color:#FD4F01; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Bekijk Mijn Bestelling
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Eet smakelijk & sportieve groet,<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD4F01; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD4F01; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © 2025 Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending order confirmation email:', error);
+    throw error;
+  }
+};
+
+// Monthly order confirmation email (Nederlands)
+exports.orderConfirmationEmailControllerMonthly = async (mailOptions) => {
+  try {
+    const { to, name, deliveryDate } = mailOptions;
+    const subject = `Je bestelling is succesvol geplaatst – Levering op ${deliveryDate}`;
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Je bestelling is succesvol geplaatst</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD4F01; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Je bestelling is succesvol geplaatst!</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Je maaltijdselectie voor deze maand is bevestigd</p>
+      </td>
+    </tr>
+    
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744426962/fitpreps/u2xmo1qiczex0cce4mos.webp" alt="Fit Preps Maaltijden" style="width:100%; height:auto; display:block;">
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Top! Je hebt je maaltijden succesvol geselecteerd voor deze maand.
+          Je bestelling is bevestigd en staat ingepland voor levering op:
+        </p>
+        
+        <!-- Delivery Date Highlight -->
+        <div style="background-color:#f0f9f4; border:2px solid #FD4F01; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h2 style="margin:0; color:#FD4F01; font-size:22px;">${deliveryDate} (tussen 17:00 en 22:00 uur)</h2>
+        </div>
+        
+        <!-- Delivery Information -->
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD4F01; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD4F01; font-size:18px;">Wat kun je verwachten?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Je ontvangt al je geselecteerde maaltijden in één levering.</li>
+            <li style="margin-bottom:10px;">Op de dag van levering ontvang je een e-mail met een track & trace link, zodat je precies weet wanneer je het pakket kunt verwachten.</li>
+            <li style="margin-bottom:0;">Zorg ervoor dat er iemand aanwezig is op het bezorgadres om het pakket in ontvangst te nemen tijdens het genoemde tijdvak.</li>
+          </ul>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen of wil je iets wijzigen? Stuur ons gerust een bericht via <a href="mailto:info@fitpreps.nl" style="color:#FD4F01; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <!-- Order Tracking Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/orders" style="background-color:#FD4F01; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Bekijk Mijn Bestelling
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Veel plezier met je maaltijden!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD4F01; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD4F01; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © 2025 Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly order confirmation email:', error);
     throw error;
   }
 };

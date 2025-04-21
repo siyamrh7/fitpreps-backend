@@ -575,20 +575,45 @@ async function processSubscriptionPayments(date) {
         { 
           $set: { 
             currentPaymentId: payment.id,
-            lastPaymentAttemptDate: new Date()
+            lastPaymentAttemptDate: new Date(),
+            updatedAt: new Date(),
+            paymentStatus:"paid"
           },
           $push: { 
             paymentHistory: {
               paymentId: payment.id,
               amount: parseFloat(sub.amountPerCycle),
               date: new Date(),
-              status: payment.status
+              status: payment.status,
+              type: 'recurring-payment'
             } 
           }
         }
       );
+         const nextPaymentDate = calculateNextDate(
+        sub.nextPaymentDate || new Date().toISOString().split('T')[0],
+        sub.frequency
+      );
      
-      console.log(`Payment created for subscription ${sub._id}: ${payment.id}`);
+      // Update next payment date in sub 
+      //TESTING CHANGE START
+      await db.collection('subscriptions').updateOne(
+        { _id: sub._id },
+        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:sub.nextPaymentDate,planEndDate:nextPaymentDate        } }
+      );
+      //TESTING CHANGE END
+      await db.collection('users').updateOne(
+        { _id: new ObjectId(sub.userId) },
+        { $inc: { points: parseInt(sub.pointsPerCycle) } }
+      );
+      if(sub.pendingCancellation){
+        await db.collection('subscriptions').updateOne(
+          { _id: sub._id },
+          { $set: { pendingCancellationConfirmed: true } }
+        );
+      }
+      
+      console.log(`Payment created for sub ${sub._id}: ${payment.id}`);
     } catch (error) {
       console.error(`Error processing payment for subscription ${sub._id}: ${error.message}`);
       
@@ -727,7 +752,7 @@ exports.purchasePoints = async (req, res) => {
       paymentMetadata.isModification = true;
     }
     
-    // Create a first payment that will also set up the mandate for future payments
+    // Create a first payment that will also set up the mandate for future payment
     const payment = await mollieClient.payments.create({
       customerId: mollieCustomerId,
       amount: {
@@ -739,7 +764,7 @@ exports.purchasePoints = async (req, res) => {
       webhookUrl: `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
       sequenceType: existingSubscription ? 'recurring' : 'first', // First or recurring based on existing subscription
       metadata: paymentMetadata,
-     
+      
     });
     
     const today = new Date();
@@ -760,13 +785,13 @@ exports.purchasePoints = async (req, res) => {
             pointsPerCycle: parseInt(totalPoints),
             amountPerCycle: parseFloat(amount),
             frequency: frequency,
-            paymentStatus: payment.status,
+            // paymentStatus: payment.status,
             updatedAt: today,
             currentPaymentId: payment.id,
             data: data || existingSubscription.data,
             nextPaymentDate: calculateNextDate(existingSubscription.nextPaymentDate, frequency),
             lastPaymentDate: today.toISOString().split('T')[0],
-            deliveryDate: null,
+            // deliveryDate: null,
             mealSelected:false,
             lastPlanEndDate:existingSubscription.planEndDate,
             planEndDate:calculateNextDate(existingSubscription.planEndDate, frequency),
@@ -782,10 +807,17 @@ exports.purchasePoints = async (req, res) => {
           }
         }
       );
+   
       
+      // Add the new points to the user's account
+      await getDB().collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $inc: { points: parseInt(totalPoints) } }
+      );
+   
       return res.json({
         success: true,
-        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}&paymentStatus=${payment.status}`,
+        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?paymentStatus=paid`,
       });
     } else {
       // Calculate the initial delivery date and next payment date
@@ -869,24 +901,24 @@ exports.firstPaymentWebhook = async (req, res) => {
     if (payment.status == 'paid') {
       if (isModification && existingSubscriptionId) {
         // This is a modification to an existing subscription
-        const subscription = await db.collection('subscriptions').findOne({ 
-          currentPaymentId: paymentId 
-        });
-        await db.collection('subscriptions').updateOne(
-          { _id: new ObjectId(existingSubscriptionId) },
-          { 
-            $set: { 
-              paymentStatus: 'paid',
-              updatedAt: new Date()
-            }
-          }
-        );
+        // const subscription = await db.collection('subscriptions').findOne({ 
+        //   currentPaymentId: paymentId 
+        // });
+        // await db.collection('subscriptions').updateOne(
+        //   { _id: new ObjectId(existingSubscriptionId) },
+        //   { 
+        //     $set: { 
+        //       paymentStatus: 'paid',
+        //       updatedAt: new Date()
+        //     }
+        //   }
+        // );
         
-        // Add the new points to the user's account
-        await db.collection('users').updateOne(
-          { _id: new ObjectId(userId) },
-          { $inc: { points: parseInt(pointsToAdd) } }
-        );
+        // // Add the new points to the user's account
+        // await db.collection('users').updateOne(
+        //   { _id: new ObjectId(userId) },
+        //   { $inc: { points: parseInt(pointsToAdd) } }
+        // );
         // setImmediate(async () =>
         //   await emailQueue.add(
         //     { emailType: "sub-confirmation", mailOptions: { to: subscription.data._billing_email,profile:process.env.FRONTEND_URI+"/profile",
@@ -1017,50 +1049,50 @@ exports.paymentWebhook = async (req, res) => {
     }
     
     // Update payment status in subscription
-    await db.collection('subscriptions').updateOne(
-      { _id: subscription._id },
-      { 
-        $set: { 
-          paymentStatus: payment.status,
-          updatedAt: new Date()
-        },
-        $push: {
-          paymentHistory: {
-            paymentId: paymentId,
-            status: payment.status,
-            date: new Date(),
-            amount: subscription.amountPerCycle,
-            type: 'recurring-payment-update'
-          }
-        }
-      }
-    );
+    // await db.collection('subscriptions').updateOne(
+    //   { _id: subscription._id },
+    //   { 
+    //     $set: { 
+    //       paymentStatus: payment.status,
+    //       updatedAt: new Date()
+    //     },
+    //     $push: {
+    //       paymentHistory: {
+    //         paymentId: paymentId,
+    //         status: payment.status,
+    //         date: new Date(),
+    //         amount: subscription.amountPerCycle,
+    //         type: 'recurring-payment-update'
+    //       }
+    //     }
+    //   }
+    // );
     
     if (payment.status === 'paid') {
       // Calculate next payment date based on frequency
       
-      const nextPaymentDate = calculateNextDate(
-        subscription.nextPaymentDate || new Date().toISOString().split('T')[0],
-        subscription.frequency
-      );
+      // const nextPaymentDate = calculateNextDate(
+      //   subscription.nextPaymentDate || new Date().toISOString().split('T')[0],
+      //   subscription.frequency
+      // );
      
-      // Update next payment date in subscription 
-      //TESTING CHANGE START
-      await db.collection('subscriptions').updateOne(
-        { _id: subscription._id },
-        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:subscription.nextPaymentDate,planEndDate:nextPaymentDate        } }
-      );
-      //TESTING CHANGE END
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(subscription.userId) },
-        { $inc: { points: parseInt(subscription.pointsPerCycle) } }
-      );
-      if(subscription.pendingCancellation){
-        await db.collection('subscriptions').updateOne(
-          { _id: subscription._id },
-          { $set: { pendingCancellationConfirmed: true } }
-        );
-      }
+      // // Update next payment date in subscription 
+      // //TESTING CHANGE START
+      // await db.collection('subscriptions').updateOne(
+      //   { _id: subscription._id },
+      //   { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:subscription.nextPaymentDate,planEndDate:nextPaymentDate        } }
+      // );
+      // //TESTING CHANGE END
+      // await db.collection('users').updateOne(
+      //   { _id: new ObjectId(subscription.userId) },
+      //   { $inc: { points: parseInt(subscription.pointsPerCycle) } }
+      // );
+      // if(subscription.pendingCancellation){
+      //   await db.collection('subscriptions').updateOne(
+      //     { _id: subscription._id },
+      //     { $set: { pendingCancellationConfirmed: true } }
+      //   );
+      // }
       console.log(`Payment ${paymentId} confirmed for subscription ${subscription._id}; next payment scheduled for ${nextPaymentDate}`);
     } 
     else if (payment.status === 'failed' || payment.status === 'canceled' || payment.status === 'expired') {
@@ -1668,9 +1700,15 @@ exports.resumeSubscription = async (req, res) => {
         {_id: new ObjectId(userId)},
         {
           $set: {
+          
           currentPaymentId: payment.id,
-        }}
+        }
+      }
       )
+      await getDB().collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $inc: { points: parseInt(subscription.pointsPerCycle) } }
+      );
       const nextPaymentDate = calculateNextDateOfBilling(resumeDate ||today.toISOString().split('T')[0], subscription.frequency);
 
       await getDB().collection('subscriptions').updateOne(
@@ -1678,7 +1716,7 @@ exports.resumeSubscription = async (req, res) => {
         { 
           $set: {
             status: 'active',
-            paymentStatus: payment.status,
+            paymentStatus: 'paid',
             updatedAt: today,
             currentPaymentId: payment.id,
             data: subscription.data,
@@ -1708,7 +1746,7 @@ exports.resumeSubscription = async (req, res) => {
       
       return res.json({
         success: true,
-        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${subscription.userId.toString()}&paymentStatus=${payment.status}`,
+        checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?paymentStatus=paid`,
       });
     } 
     // Calculate new delivery and payment dates

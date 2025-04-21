@@ -48,10 +48,10 @@ emailQueue.process(10, async (job) => {
     if (emailType == "sub-welcome-monthly") {
       await monthlySubscriptionStartedController(mailOptions);
     }
-    if (emailType == "order-confirmation-weekly") {
+    if (emailType == "sub-confirmation-weekly") {
       await orderConfirmationEmailControllerWeekly(mailOptions);
     }
-    if (emailType == "order-confirmation-monthly") {
+    if (emailType == "sub-confirmation-monthly") {
       await orderConfirmationEmailControllerMonthly(mailOptions);
     }
     if (emailType == "sub-confirmation") {

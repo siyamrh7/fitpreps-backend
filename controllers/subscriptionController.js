@@ -1414,9 +1414,9 @@ exports.startSubscription = async (req, res) => {
       }
       setImmediate(async () =>
         await emailQueue.add(
-          { emailType: subscription.frequency == "weekly" ? "sub-confirmation-weekly" : "sub-confirmation-monthly", mailOptions: { to: subscription.data._billing_email,deliveryDate:startDate,
+          { emailType: paymentData.frequency == "weekly" ? "sub-confirmation-weekly" : "sub-confirmation-monthly", mailOptions: { to: paymentData.data._billing_email,deliveryDate:startDate,
             
-            name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
+            name:paymentData.data._billing_first_name+" "+paymentData.data._billing_last_name  } },
 
           {
             attempts: 3, // Retry up to 3 times in case of failure

@@ -2667,3 +2667,112 @@ exports.subscriptionMonthlyCancelledController = async (mailOptions) => {
     throw error;
   }
 };
+
+// Owner notification when someone starts a new subscription
+exports.newSubscriptionNotificationController = async (subscriptionData) => {
+  try {
+    const { customer, plan, startDate, total, items } = subscriptionData;
+    
+    // Format items if they exist
+    const itemsHTML = items && items.length ? items
+      .map(item => `
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 8px;">${item.name || 'N/A'}</td>
+          <td style="border: 1px solid #ddd; padding: 8px;">${item.quantity || '1'}</td>
+          <td style="border: 1px solid #ddd; padding: 8px;">€${parseFloat(item.price || 0).toFixed(2)}</td>
+        </tr>
+      `).join('') 
+      : '<tr><td colspan="3" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Geen items gespecificeerd</td></tr>';
+    
+    const subject = `Nieuwe Abonnement Gestart: ${customer.name || 'Nieuwe Klant'} of ${total} - ${plan}`;
+    const html = `
+    <!DOCTYPE html>
+    <html lang="nl">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Nieuwe Abonnement Notificatie</title>
+    </head>
+    <body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+    
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+            <h1 style="color:#ffffff; font-size:26px; margin:0;">Nieuwe Abonnement Gestart! 🚀</h1>
+            <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Een nieuwe klant heeft zich aangemeld bij Fit Preps</p>
+          </td>
+        </tr>
+        
+        <!-- Main Content -->
+        <tr>
+          <td style="padding:30px; color:#333333;">
+            <h2 style="font-size:20px; margin-top:0;">Abonnement Details:</h2>
+            
+            <!-- Customer Info -->
+            <table width="100%" style="border-collapse: collapse; margin-bottom: 25px;">
+              <tr>
+                <td width="30%" style="font-weight:bold; padding: 8px 0;">Klant:</td>
+                <td style="padding: 8px 0;">${customer.name || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; padding: 8px 0;">Email:</td>
+                <td style="padding: 8px 0;">${customer.email || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; padding: 8px 0;">Telefoon:</td>
+                <td style="padding: 8px 0;">${customer.phone || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; padding: 8px 0;">Abonnement Type:</td>
+                <td style="padding: 8px 0;">${plan || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; padding: 8px 0;">Start Datum:</td>
+                <td style="padding: 8px 0;">${startDate || new Date().toLocaleDateString('nl-NL')}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; padding: 8px 0;">Totaalbedrag:</td>
+                <td style="padding: 8px 0; font-weight: bold; color: #FD5001;">€${parseFloat(total || 0).toFixed(2)}</td>
+              </tr>
+            </table>
+            
+        
+            
+            <!-- CTA Button -->
+            <div style="text-align:center; margin:30px 0 20px;">
+              <a href="${process.env.FRONTEND_URI}/admin/subscriptions" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+                Bekijk in Admin Dashboard
+              </a>
+            </div>
+            
+            <p style="font-size:16px; line-height:1.6; margin-top:20px; color: #666;">
+              Dit is een automatische notificatie over een nieuw abonnement in het Fit Preps systeem.
+            </p>
+          </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+            <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+              © ${new Date().getFullYear()} Fit Preps • Systeem Notificatie
+            </p>
+          </td>
+        </tr>
+        
+      </table>
+    
+    </body>
+    </html>
+    `;
+    
+    // Send email to the owner's email address
+    await sendEmail('siyamrh7@gmail.com', subject, html);
+    console.log('New subscription notification sent to owner');
+    
+  } catch (error) {
+    console.error('Error sending new subscription notification email:', error);
+  }
+};

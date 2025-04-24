@@ -16,7 +16,8 @@ const { orderEmailController, contactEmailController, orderEmailController2, req
   orderConfirmationEmailControllerWeekly,
   orderConfirmationEmailControllerMonthly,
   subscriptionWeeklyCancelledController,
-  subscriptionMonthlyCancelledController
+  subscriptionMonthlyCancelledController,
+  newSubscriptionNotificationController
 } = require('./emailController');
 
 // Initialize the email queue
@@ -50,6 +51,9 @@ emailQueue.process(10, async (job) => {
     }
     if (emailType == "sub-welcome-monthly") {
       await monthlySubscriptionStartedController(mailOptions);
+    }
+    if (emailType == "sub-welcome-owner") {
+      await newSubscriptionNotificationController(mailOptions);
     }
     if (emailType == "sub-confirmation-weekly") {
       await orderConfirmationEmailControllerWeekly(mailOptions);

@@ -990,11 +990,32 @@ exports.firstPaymentWebhook = async (req, res) => {
             }
           )
         );
+        const subscriptionData = {
+          customer: {
+            name: subscription.data._billing_first_name+" "+subscription.data._billing_last_name,
+            email: subscription.data._billing_email,
+            phone: subscription.data._billing_phone
+          },
+          plan: subscription.frequency == "weekly" ? "Wekelijks Abonnement" : "Maandelijks Abonnement",
+          startDate: subscription.startDate,
+          total: subscription.amountPerCycle,
+         
+        };
+        setImmediate(async () => {
+          await emailQueue.add(
+            { emailType: "sub-welcome-owner", mailOptions: subscriptionData },
+            {
+              attempts: 3, // Retry up to 3 times in case of failure
+              backoff: 5000, // Retry with a delay of 5 seconds
+            }
+          );
+        });
         console.log(`Initial payment confirmed: Added ${pointsToAdd} points to user ${userId}`);
       }
     } 
     else if (payment.status === 'failed' || payment.status === 'canceled' || payment.status === 'expired') {
       // Handle failed payment
+    
       await db.collection('subscriptions').updateOne(
         { currentPaymentId: paymentId },
         { 

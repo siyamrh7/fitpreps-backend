@@ -1089,31 +1089,10 @@ exports.getAllOrders = async (req, res) => {
     }
 
     // Filter by specific delivery date if provided
-    // if (deliveryDate) {
-    //   const specificDate = moment(deliveryDate, "YYYY-MM-DD").startOf("day");
-    //   const nextDay = specificDate.clone().add(1, "day");
-
-    //   // Update query to filter by specific delivery date
-    //   query["metadata._delivery_date"] = {
-    //     $gte: specificDate.toISOString(), // Start of the day
-    //     $lt: nextDay.toISOString(), // End of the day
-    //   };
-    // }
-    // if (deliveryDate) {
-    //   const specificDate = moment.utc(deliveryDate, "YYYY-MM-DD").startOf("day"); // Use UTC explicitly
-    //   const nextDay = specificDate.clone().add(1, "day"); // Next day's start in UTC
-
-    //   // Update query to filter by specific delivery date
-    //   query["metadata._delivery_date"] = {
-    //     $gte: specificDate.toISOString(), // Start of the day in UTC
-    //     $lt: nextDay.toISOString(), // End of the day in UTC
-    //   };
-    // }
     if (deliveryDate) {
       // Directly use the deliveryDate as a string in the query
       query["metadata._delivery_date"] = deliveryDate; // Expecting "2025-01-28" as string in the DB
     }
-
 
     // Filter by search query for name or phone
     if (searchQuery) {
@@ -1330,768 +1309,6 @@ exports.updatePackingSlipStatus = async (req, res) => {
 
 
 
-// exports.getAnalytics = async (req, res) => {
-//   try {
-//     const ordersCollection = getDB().collection('orders');
-
-//     // Helper function to calculate date ranges
-//     const getDateRange = (days) => {
-//       const end = new Date();
-//       const start = new Date();
-//       start.setDate(end.getDate() - days);
-//       return { start, end };
-//     };
-//     const aggregateMonthlyOrders = async () => {
-//       const result = await ordersCollection.aggregate([
-//         {
-//           $match: { status: 'completed' }, // Match only completed orders
-//         },
-//         {
-//           $project: {
-//             createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
-//             year: { $year: { $dateFromString: { dateString: "$createdAt" } } }, // Extract year
-//             month: { $month: { $dateFromString: { dateString: "$createdAt" } } }, // Extract month
-//             totalAsNumber: { $toDouble: "$total" }, // Convert total to a number
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: { year: "$year", month: "$month" },
-//             totalOrders: { $sum: "$totalAsNumber" }, // Sum the numeric `total` field
-//           },
-//         },
-//         {
-//           $sort: { "_id.year": 1, "_id.month": 1 }, // Sort by year and month
-//         },
-//       ]).toArray();
-
-//       // Map the result to return it as an array of totals for each month
-//       const monthlyOrders = Array(12).fill(0); // Initialize array with 12 months
-
-//       result.forEach(item => {
-//         const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
-//         monthlyOrders[monthIndex] = item.totalOrders;
-//       });
-
-//       return monthlyOrders;
-//     };
-
-
-
-//     const aggregateDailyOrders = async () => {
-//       const today = new Date();
-//       const thirtyDaysAgo = new Date(today);
-//       thirtyDaysAgo.setDate(today.getDate() - 30); // Calculate the date for 30 days ago
-
-//       // Generate an array of dates for the last 30 days
-//       const last30Days = [];
-//       for (let i = 0; i < 30; i++) {
-//         const day = new Date(thirtyDaysAgo);
-//         day.setDate(thirtyDaysAgo.getDate() + i); // Get each date in the last 30 days
-//         last30Days.push(day.toISOString().split('T')[0]); // Store date in YYYY-MM-DD format
-//       }
-
-//       const result = await ordersCollection.aggregate([
-//         {
-//           $addFields: {
-//             createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
-//             totalAsNumber: { $toDouble: "$total" }, // Convert the total value (string) to a number
-//           },
-//         },
-//         {
-//           $match: {
-//             status: 'completed', // Match only completed orders
-//             createdAtDate: {
-//               $gte: thirtyDaysAgo, // Orders created in the last 30 days
-//               $lte: today, // Orders up until today
-//             },
-//           },
-//         },
-//         {
-//           $project: {
-//             createdAtDate: 1, // Keep the created date field
-//             totalAsNumber: 1, // Keep the converted total field
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: { createdAtDate: { $dateToString: { format: "%Y-%m-%d", date: "$createdAtDate" } } }, // Group by date (YYYY-MM-DD)
-//             totalOrders: { $sum: "$totalAsNumber" }, // Sum the total value (numeric)
-//           },
-//         },
-//         {
-//           $sort: { "_id.createdAtDate": 1 }, // Sort by date
-//         },
-//       ]).toArray();
-
-//       // Initialize an array for the last 30 days with zeros
-//       const dailyOrders = Array(30).fill(0);
-
-//       // Populate the dailyOrders array with data from the result
-//       result.forEach(item => {
-//         // Find the index corresponding to the date in the last30Days array
-//         const index = last30Days.indexOf(item._id.createdAtDate);
-
-//         // If the date is found in the last 30 days, update the corresponding index in the dailyOrders array
-//         if (index >= 0) {
-//           dailyOrders[index] = item.totalOrders;
-//         }
-//       });
-
-//       return dailyOrders;
-//     };
-
-
-//     const aggregateLast24HoursOrders = async () => {
-//       // Get the current date and calculate the start time for the last 24 hours
-//       const now = new Date();
-//       const startTime = new Date(now);
-//       startTime.setHours(now.getHours() - 24); // 24 hours ago
-
-//       const result = await ordersCollection.aggregate([
-//         {
-//           $addFields: {
-//             createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
-//             totalAsNumber: { $toDouble: "$total" }, // Convert total value to a number
-//           },
-//         },
-//         {
-//           $match: {
-//             createdAtDate: {
-//               $gte: startTime, // Start time of the last 24 hours
-//               $lt: now, // Current time (exclusive)
-//             },
-//           },
-//         },
-//         {
-//           $project: {
-//             hour: { $hour: "$createdAtDate" }, // Extract the hour
-//             day: { $dayOfYear: "$createdAtDate" }, // Extract the day of the year
-//             year: { $year: "$createdAtDate" }, // Extract the year
-//             totalAsNumber: 1, // Keep the total value (numeric)
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: { year: "$year", day: "$day", hour: "$hour" }, // Group by year, day, and hour
-//             totalValue: { $sum: "$totalAsNumber" }, // Sum the total values for each hour
-//           },
-//         },
-//         {
-//           $project: {
-//             totalValue: { $toInt: "$totalValue" }, // Convert the total value to integer
-//           },
-//         },
-//         {
-//           $sort: { "_id.year": 1, "_id.day": 1, "_id.hour": 1 }, // Sort by year, day, and hour
-//         },
-//       ]).toArray();
-
-//       // Prepare the last 24 hours array with zeros
-//       const hourlyOrders = Array(24).fill(0);
-
-//       // Populate the hourlyOrders array with data from the result
-//       result.forEach(item => {
-//         const orderDate = new Date(item._id.year, 0); // Start of the year
-//         orderDate.setDate(item._id.day); // Add the day of the year
-//         orderDate.setHours(item._id.hour); // Add the hour
-
-//         const diffInHours = Math.floor((now - orderDate) / (1000 * 60 * 60)); // Difference in hours from now
-
-//         if (diffInHours >= 0 && diffInHours < 24) {
-//           const hourIndex = 23 - diffInHours; // Map to the last 24 hours
-//           hourlyOrders[hourIndex] = item.totalValue; // Set the total value for that hour
-//         }
-//       });
-
-//       return hourlyOrders;
-//     };
-
-
-
-//     // Aggregation function for sales and orders
-//     const aggregateMetrics = async (start, end) => {
-//       const metrics = await ordersCollection.aggregate([
-//         {
-//           $addFields: {
-//             createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
-//           },
-//         },
-//         {
-//           $match: {
-//             status: 'completed',
-//             createdAtDate: { $gte: start, $lte: end }, // Compare the converted Date field
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: null,
-//             totalSales: { $sum: { $toDouble: "$total" } },
-//             totalOrders: { $sum: 1 },
-//             totalTaxes: {
-//               $sum: {
-//                 $add: [
-//                   { $toDouble: "$metadata._order_tax" },
-//                   { $toDouble: "$metadata._order_shipping_tax" },
-//                 ],
-//               },
-//             },
-//             totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
-//             totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
-//             totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
-//           },
-//         },
-//       ]).toArray();
-
-//       const processingOrders = await ordersCollection.countDocuments({
-//         status: 'processing',
-//         createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
-//       });
-
-//       const cancelledOrders = await ordersCollection.countDocuments({
-//         status: 'cancelled',
-//         createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
-//       });
-//       return {
-//         totalSales: metrics[0]?.totalSales || 0,
-//         totalOrders: metrics[0]?.totalOrders || 0,
-//         totalTaxes: metrics[0]?.totalTaxes || 0,
-//         totalProductTaxes: metrics[0]?.totalProductTaxes || 0,
-//         totalShippingTaxes: metrics[0]?.totalShippingTaxes || 0,
-//         totalDiscounts: metrics[0]?.totalDiscounts || 0,
-//         processingOrders: processingOrders || 0,
-//         cancelledOrders: cancelledOrders || 0,
-//       };
-//     };
-
-//     // Fetching global analytics data
-//     const totalSales = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalSales: { $sum: { $toDouble: "$total" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalTaxes = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalTaxes: {
-//             $sum: {
-//               $add: [
-//                 { $toDouble: "$metadata._order_tax" },
-//                 { $toDouble: "$metadata._order_shipping_tax" },
-//               ],
-//             },
-//           },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalDiscounts = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalProductTaxes = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalShippingTaxes = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     // Aggregation for Total Orders
-//     const totalOrders = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       { $count: "totalOrders" },
-//     ]).toArray();
-
-//     // Aggregation for Processing Orders
-//     const processingOrders = await ordersCollection.aggregate([
-//       { $match: { status: 'processing' } },
-//       { $count: "processingOrders" },
-//     ]).toArray();
-
-
-//     // Date ranges for monthly, weekly, and today
-//     const { start: startOfMonth, end: endOfMonth } = getDateRange(30);
-//     const { start: startOfWeek, end: endOfWeek } = getDateRange(7);
-//     const { start: startOfToday, end: endOfToday } = getDateRange(1);
-
-//     const monthlyData = await aggregateMetrics(startOfMonth, endOfMonth);
-//     const weeklyData = await aggregateMetrics(startOfWeek, endOfWeek);
-//     const todayData = await aggregateMetrics(startOfToday, endOfToday);
-//     const monthlyOrders = await aggregateMonthlyOrders();
-//     const dailyOrders = await aggregateDailyOrders();
-//     const hourlyOrders = await aggregateLast24HoursOrders();
-//     // Prepare the analytics response object
-//     const analytics = {
-//       totalSales: totalSales[0]?.totalSales || 0,
-//       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
-//       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
-//       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
-//       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
-//       totalOrders: totalOrders[0]?.totalOrders || 0,
-//       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
-//       monthlyOrders,
-//       dailyOrders,
-//       hourlyOrders,
-//       total: {
-//         totalSales: totalSales[0]?.totalSales || 0,
-//         completedOrders: totalOrders[0]?.totalOrders || 0,
-//         totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
-//         totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
-//         processingOrders: processingOrders[0]?.processingOrders || 0,
-//       },
-//       monthly: {
-//         totalSales: monthlyData.totalSales,
-//         completedOrders: monthlyData.totalOrders,
-//         totalTaxes: monthlyData.totalTaxes,
-//         totalProductTaxes: monthlyData.totalProductTaxes,
-//         totalShippingTaxes: monthlyData.totalShippingTaxes,
-//         totalDiscounts: monthlyData.totalDiscounts,
-//         processingOrders: monthlyData.processingOrders,
-//         cancelledOrders: monthlyData.cancelledOrders,
-//       },
-//       weekly: {
-//         totalSales: weeklyData.totalSales,
-//         completedOrders: weeklyData.totalOrders,
-//         totalTaxes: weeklyData.totalTaxes,
-//         totalProductTaxes: weeklyData.totalProductTaxes,
-//         totalShippingTaxes: weeklyData.totalShippingTaxes,
-//         totalDiscounts: weeklyData.totalDiscounts,
-//         processingOrders: weeklyData.processingOrders,
-//         cancelledOrders: weeklyData.cancelledOrders,
-//       },
-//       today: {
-//         totalSales: todayData.totalSales,
-//         completedOrders: todayData.totalOrders,
-//         totalTaxes: todayData.totalTaxes,
-//         totalProductTaxes: todayData.totalProductTaxes,
-//         totalShippingTaxes: todayData.totalShippingTaxes,
-//         totalDiscounts: todayData.totalDiscounts,
-//         processingOrders: todayData.processingOrders,
-//         cancelledOrders: todayData.cancelledOrders,
-//       },
-//     };
-
-//     // Send the analytics response
-//     res.status(200).json(analytics);
-//   } catch (error) {
-//     res.status(400).json({ message: 'Error fetching analytics', error });
-//   }
-// };
-
-
-// exports.getAnalytics = async (req, res) => {
-//   try {
-//     const ordersCollection = getDB().collection('orders');
-
-//     // Helper function to calculate date ranges
-//     const getDateRange = (type) => {
-//       const now = new Date();
-//       const start = new Date(now);
-
-//       switch (type) {
-//         case 'monthly':
-//           start.setDate(1); // Set to the first day of the month
-//           break;
-//         case 'weekly':
-//           start.setDate(now.getDate() - now.getDay() + 1); // Set to Monday of the current week
-//           break;
-//         case 'yearly':
-//           start.setMonth(0, 1); // Set to January 1st of the current year
-//           break;
-//         default:
-//           throw new Error('Invalid date range type');
-//       }
-
-//       return { start, end: now };
-//     };
-
-//     // Aggregation function for sales and orders
-//     const aggregateMetrics = async (start, end) => {
-//       const metrics = await ordersCollection.aggregate([
-//         {
-//           $addFields: {
-//             createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
-//           },
-//         },
-//         {
-//           $match: {
-//             status: 'completed',
-//             createdAtDate: { $gte: start, $lte: end }, // Compare the converted Date field
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: null,
-//             totalSales: { $sum: { $toDouble: "$total" } },
-//             totalOrders: { $sum: 1 },
-//             totalTaxes: {
-//               $sum: {
-//                 $add: [
-//                   { $toDouble: "$metadata._order_tax" },
-//                   { $toDouble: "$metadata._order_shipping_tax" },
-//                 ],
-//               },
-//             },
-//             totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
-//             totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
-//             totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
-//           },
-//         },
-//       ]).toArray();
-
-//       const processingOrders = await ordersCollection.countDocuments({
-//         status: 'processing',
-//         createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
-//       });
-
-//       const cancelledOrders = await ordersCollection.countDocuments({
-//         status: 'cancelled',
-//         createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
-//       });
-
-//       return {
-//         totalSales: metrics[0]?.totalSales || 0,
-//         totalOrders: metrics[0]?.totalOrders || 0,
-//         totalTaxes: metrics[0]?.totalTaxes || 0,
-//         totalProductTaxes: metrics[0]?.totalProductTaxes || 0,
-//         totalShippingTaxes: metrics[0]?.totalShippingTaxes || 0,
-//         totalDiscounts: metrics[0]?.totalDiscounts || 0,
-//         processingOrders: processingOrders || 0,
-//         cancelledOrders: cancelledOrders || 0,
-//       };
-//     };
-
-//     // Fetching global analytics data
-//     const totalSales = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalSales: { $sum: { $toDouble: "$total" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalTaxes = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalTaxes: {
-//             $sum: {
-//               $add: [
-//                 { $toDouble: "$metadata._order_tax" },
-//                 { $toDouble: "$metadata._order_shipping_tax" },
-//               ],
-//             },
-//           },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalDiscounts = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalProductTaxes = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     const totalShippingTaxes = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       {
-//         $group: {
-//           _id: null,
-//           totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
-//         },
-//       },
-//     ]).toArray();
-
-//     // Aggregation for Total Orders
-//     const totalOrders = await ordersCollection.aggregate([
-//       { $match: { status: 'completed' } },
-//       { $count: "totalOrders" },
-//     ]).toArray();
-
-//     // Aggregation for Processing Orders
-//     const processingOrders = await ordersCollection.aggregate([
-//       { $match: { status: 'processing' } },
-//       { $count: "processingOrders" },
-//     ]).toArray();
-
-//     // Date ranges for monthly, weekly, and yearly
-//     const { start: startOfMonth, end: endOfMonth } = getDateRange('monthly');
-//     const { start: startOfWeek, end: endOfWeek } = getDateRange('weekly');
-//     const { start: startOfYear, end: endOfYear } = getDateRange('yearly');
-
-//     const monthlyData = await aggregateMetrics(startOfMonth, endOfMonth);
-//     const weeklyData = await aggregateMetrics(startOfWeek, endOfWeek);
-//     const yearlyData = await aggregateMetrics(startOfYear, endOfYear);
-
-//     // Additional analytics functions (unchanged)
-//     const aggregateMonthlyOrders = async () => {
-//       const result = await ordersCollection.aggregate([
-//         {
-//           $match: { status: 'completed' }, // Match only completed orders
-//         },
-//         {
-//           $project: {
-//             createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
-//             year: { $year: { $dateFromString: { dateString: "$createdAt" } } }, // Extract year
-//             month: { $month: { $dateFromString: { dateString: "$createdAt" } } }, // Extract month
-//             totalAsNumber: { $toDouble: "$total" }, // Convert total to a number
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: { year: "$year", month: "$month" },
-//             totalOrders: { $sum: "$totalAsNumber" }, // Sum the numeric `total` field
-//           },
-//         },
-//         {
-//           $sort: { "_id.year": 1, "_id.month": 1 }, // Sort by year and month
-//         },
-//       ]).toArray();
-
-//       // Map the result to return it as an array of totals for each month
-//       const monthlyOrders = Array(12).fill(0); // Initialize array with 12 months
-
-//       result.forEach(item => {
-//         const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
-//         monthlyOrders[monthIndex] = item.totalOrders;
-//       });
-
-//       return monthlyOrders;
-//     };
-
-//     const aggregateDailyOrders = async () => {
-//       const today = new Date();
-//       const thirtyDaysAgo = new Date(today);
-//       thirtyDaysAgo.setDate(today.getDate() - 30); // Calculate the date for 30 days ago
-
-//       // Generate an array of dates for the last 30 days
-//       const last30Days = [];
-//       for (let i = 0; i < 30; i++) {
-//         const day = new Date(thirtyDaysAgo);
-//         day.setDate(thirtyDaysAgo.getDate() + i); // Get each date in the last 30 days
-//         last30Days.push(day.toISOString().split('T')[0]); // Store date in YYYY-MM-DD format
-//       }
-
-//       const result = await ordersCollection.aggregate([
-//         {
-//           $addFields: {
-//             createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
-//             totalAsNumber: { $toDouble: "$total" }, // Convert the total value (string) to a number
-//           },
-//         },
-//         {
-//           $match: {
-//             status: 'completed', // Match only completed orders
-//             createdAtDate: {
-//               $gte: thirtyDaysAgo, // Orders created in the last 30 days
-//               $lte: today, // Orders up until today
-//             },
-//           },
-//         },
-//         {
-//           $project: {
-//             createdAtDate: 1, // Keep the created date field
-//             totalAsNumber: 1, // Keep the converted total field
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: { createdAtDate: { $dateToString: { format: "%Y-%m-%d", date: "$createdAtDate" } } }, // Group by date (YYYY-MM-DD)
-//             totalOrders: { $sum: "$totalAsNumber" }, // Sum the total value (numeric)
-//           },
-//         },
-//         {
-//           $sort: { "_id.createdAtDate": 1 }, // Sort by date
-//         },
-//       ]).toArray();
-
-//       // Initialize an array for the last 30 days with zeros
-//       const dailyOrders = Array(30).fill(0);
-
-//       // Populate the dailyOrders array with data from the result
-//       result.forEach(item => {
-//         // Find the index corresponding to the date in the last30Days array
-//         const index = last30Days.indexOf(item._id.createdAtDate);
-
-//         // If the date is found in the last 30 days, update the corresponding index in the dailyOrders array
-//         if (index >= 0) {
-//           dailyOrders[index] = item.totalOrders;
-//         }
-//       });
-
-//       return dailyOrders;
-//     };
-
-//     const aggregateLast24HoursOrders = async () => {
-//       // Get the current date and calculate the start time for the last 24 hours
-//       const now = new Date();
-//       const startTime = new Date(now);
-//       startTime.setHours(now.getHours() - 24); // 24 hours ago
-
-//       const result = await ordersCollection.aggregate([
-//         {
-//           $addFields: {
-//             createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
-//             totalAsNumber: { $toDouble: "$total" }, // Convert total value to a number
-//           },
-//         },
-//         {
-//           $match: {
-//             createdAtDate: {
-//               $gte: startTime, // Start time of the last 24 hours
-//               $lt: now, // Current time (exclusive)
-//             },
-//           },
-//         },
-//         {
-//           $project: {
-//             hour: { $hour: "$createdAtDate" }, // Extract the hour
-//             day: { $dayOfYear: "$createdAtDate" }, // Extract the day of the year
-//             year: { $year: "$createdAtDate" }, // Extract the year
-//             totalAsNumber: 1, // Keep the total value (numeric)
-//           },
-//         },
-//         {
-//           $group: {
-//             _id: { year: "$year", day: "$day", hour: "$hour" }, // Group by year, day, and hour
-//             totalValue: { $sum: "$totalAsNumber" }, // Sum the total values for each hour
-//           },
-//         },
-//         {
-//           $project: {
-//             totalValue: { $toInt: "$totalValue" }, // Convert the total value to integer
-//           },
-//         },
-//         {
-//           $sort: { "_id.year": 1, "_id.day": 1, "_id.hour": 1 }, // Sort by year, day, and hour
-//         },
-//       ]).toArray();
-
-//       // Prepare the last 24 hours array with zeros
-//       const hourlyOrders = Array(24).fill(0);
-
-//       // Populate the hourlyOrders array with data from the result
-//       result.forEach(item => {
-//         const orderDate = new Date(item._id.year, 0); // Start of the year
-//         orderDate.setDate(item._id.day); // Add the day of the year
-//         orderDate.setHours(item._id.hour); // Add the hour
-
-//         const diffInHours = Math.floor((now - orderDate) / (1000 * 60 * 60)); // Difference in hours from now
-
-//         if (diffInHours >= 0 && diffInHours < 24) {
-//           const hourIndex = 23 - diffInHours; // Map to the last 24 hours
-//           hourlyOrders[hourIndex] = item.totalValue; // Set the total value for that hour
-//         }
-//       });
-
-//       return hourlyOrders;
-//     };
-
-//     // Fetch additional analytics data
-//     const monthlyOrders = await aggregateMonthlyOrders();
-//     const dailyOrders = await aggregateDailyOrders();
-//     const hourlyOrders = await aggregateLast24HoursOrders();
-
-//     // Prepare the analytics response object
-//     const analytics = {
-//       totalSales: totalSales[0]?.totalSales || 0,
-//       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
-//       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
-//       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
-//       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
-//       totalOrders: totalOrders[0]?.totalOrders || 0,
-//       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
-//       monthlyOrders,
-//       dailyOrders,
-//       hourlyOrders,
-//       total: {
-//         totalSales: totalSales[0]?.totalSales || 0,
-//         completedOrders: totalOrders[0]?.totalOrders || 0,
-//         totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
-//         totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
-//         processingOrders: processingOrders[0]?.processingOrders || 0,
-//       },
-//       monthly: {
-//         totalSales: monthlyData.totalSales,
-//         completedOrders: monthlyData.totalOrders,
-//         totalTaxes: monthlyData.totalTaxes,
-//         totalProductTaxes: monthlyData.totalProductTaxes,
-//         totalShippingTaxes: monthlyData.totalShippingTaxes,
-//         totalDiscounts: monthlyData.totalDiscounts,
-//         processingOrders: monthlyData.processingOrders,
-//         cancelledOrders: monthlyData.cancelledOrders,
-//       },
-//       weekly: {
-//         totalSales: weeklyData.totalSales,
-//         completedOrders: weeklyData.totalOrders,
-//         totalTaxes: weeklyData.totalTaxes,
-//         totalProductTaxes: weeklyData.totalProductTaxes,
-//         totalShippingTaxes: weeklyData.totalShippingTaxes,
-//         totalDiscounts: weeklyData.totalDiscounts,
-//         processingOrders: weeklyData.processingOrders,
-//         cancelledOrders: weeklyData.cancelledOrders,
-//       },
-//       yearly: {
-//         totalSales: yearlyData.totalSales,
-//         completedOrders: yearlyData.totalOrders,
-//         totalTaxes: yearlyData.totalTaxes,
-//         totalProductTaxes: yearlyData.totalProductTaxes,
-//         totalShippingTaxes: yearlyData.totalShippingTaxes,
-//         totalDiscounts: yearlyData.totalDiscounts,
-//         processingOrders: yearlyData.processingOrders,
-//         cancelledOrders: yearlyData.cancelledOrders,
-//       },
-//     };
-
-//     // Send the analytics response
-//     res.status(200).json(analytics);
-//   } catch (error) {
-//     res.status(400).json({ message: 'Error fetching analytics', error });
-//   }
-// };
 exports.getAnalytics = async (req, res) => {
   try {
     const ordersCollection = getDB().collection('orders');
@@ -2126,7 +1343,13 @@ exports.getAnalytics = async (req, res) => {
       const metrics = await ordersCollection.aggregate([
         {
           $addFields: {
-            createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
           },
         },
         {
@@ -2138,31 +1361,45 @@ exports.getAnalytics = async (req, res) => {
         {
           $group: {
             _id: null,
-            totalSales: { $sum: { $toDouble: "$total" } },
+            totalSales: { 
+              $sum: { 
+                $cond: {
+                  if: { $ne: [{ $type: "$total" }, "missing"] },
+                  then: { $convert: { input: { $ifNull: ["$total", "0"] }, to: "double", onError: 0 } },
+                  else: 0
+                }
+              } 
+            },
             totalOrders: { $sum: 1 },
             totalTaxes: {
               $sum: {
                 $add: [
-                  { $toDouble: "$metadata._order_tax" },
-                  { $toDouble: "$metadata._order_shipping_tax" },
+                  { $convert: { input: { $ifNull: ["$metadata._order_tax", "0"] }, to: "double", onError: 0 } },
+                  { $convert: { input: { $ifNull: ["$metadata._order_shipping_tax", "0"] }, to: "double", onError: 0 } }
                 ],
               },
             },
-            totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
-            totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
-            totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
+            totalProductTaxes: { 
+              $sum: { $convert: { input: { $ifNull: ["$metadata._order_tax", "0"] }, to: "double", onError: 0 } }
+            },
+            totalShippingTaxes: { 
+              $sum: { $convert: { input: { $ifNull: ["$metadata._order_shipping_tax", "0"] }, to: "double", onError: 0 } }
+            },
+            totalDiscounts: { 
+              $sum: { $convert: { input: { $ifNull: ["$metadata._cart_discount", "0"] }, to: "double", onError: 0 } }
+            },
           },
         },
       ]).toArray();
 
       const processingOrders = await ordersCollection.countDocuments({
         status: 'processing',
-        createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
+        createdAt: { $gte: start.toISOString(), $lte: end.toISOString() },
       });
 
       const cancelledOrders = await ordersCollection.countDocuments({
         status: 'cancelled',
-        createdAt: { $gte: start.toISOString(), $lte: end.toISOString() }, // Ensure correct comparison
+        createdAt: { $gte: start.toISOString(), $lte: end.toISOString() },
       });
 
       return {
@@ -2183,7 +1420,9 @@ exports.getAnalytics = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalSales: { $sum: { $toDouble: "$total" } },
+          totalSales: { 
+            $sum: { $convert: { input: { $ifNull: ["$total", "0"] }, to: "double", onError: 0 } }
+          },
         },
       },
     ]).toArray();
@@ -2196,8 +1435,8 @@ exports.getAnalytics = async (req, res) => {
           totalTaxes: {
             $sum: {
               $add: [
-                { $toDouble: "$metadata._order_tax" },
-                { $toDouble: "$metadata._order_shipping_tax" },
+                { $convert: { input: { $ifNull: ["$metadata._order_tax", "0"] }, to: "double", onError: 0 } },
+                { $convert: { input: { $ifNull: ["$metadata._order_shipping_tax", "0"] }, to: "double", onError: 0 } }
               ],
             },
           },
@@ -2210,7 +1449,9 @@ exports.getAnalytics = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalDiscounts: { $sum: { $toDouble: "$metadata._cart_discount" } },
+          totalDiscounts: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._cart_discount", "0"] }, to: "double", onError: 0 } }
+          },
         },
       },
     ]).toArray();
@@ -2220,7 +1461,9 @@ exports.getAnalytics = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalProductTaxes: { $sum: { $toDouble: "$metadata._order_tax" } },
+          totalProductTaxes: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._order_tax", "0"] }, to: "double", onError: 0 } }
+          },
         },
       },
     ]).toArray();
@@ -2230,7 +1473,9 @@ exports.getAnalytics = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalShippingTaxes: { $sum: { $toDouble: "$metadata._order_shipping_tax" } },
+          totalShippingTaxes: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._order_shipping_tax", "0"] }, to: "double", onError: 0 } }
+          },
         },
       },
     ]).toArray();
@@ -2266,20 +1511,42 @@ exports.getAnalytics = async (req, res) => {
         },
         {
           $project: {
-            createdAtDate: { $dateFromString: { dateString: "$createdAt" } }, // Convert string to Date
-            year: { $year: { $dateFromString: { dateString: "$createdAt" } } }, // Extract year
-            month: { $month: { $dateFromString: { dateString: "$createdAt" } } }, // Extract month
-            totalAsNumber: { $toDouble: "$total" }, // Convert total to a number
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            year: { 
+              $year: { 
+                $cond: {
+                  if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                  then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                  else: "$createdAt"
+                }
+              } 
+            },
+            month: { 
+              $month: { 
+                $cond: {
+                  if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                  then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                  else: "$createdAt"
+                }
+              } 
+            },
+            totalAsNumber: { $convert: { input: { $ifNull: ["$total", "0"] }, to: "double", onError: 0 } },
           },
         },
         {
           $group: {
             _id: { year: "$year", month: "$month" },
-            totalOrders: { $sum: "$totalAsNumber" }, // Sum the numeric `total` field
+            totalOrders: { $sum: "$totalAsNumber" },
           },
         },
         {
-          $sort: { "_id.year": 1, "_id.month": 1 }, // Sort by year and month
+          $sort: { "_id.year": 1, "_id.month": 1 },
         },
       ]).toArray();
 
@@ -2287,8 +1554,12 @@ exports.getAnalytics = async (req, res) => {
       const monthlyOrders = Array(12).fill(0); // Initialize array with 12 months
 
       result.forEach(item => {
-        const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
-        monthlyOrders[monthIndex] = item.totalOrders;
+        if (item._id && item._id.month) {
+          const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
+          if (monthIndex >= 0 && monthIndex < 12) {
+            monthlyOrders[monthIndex] = item.totalOrders;
+          }
+        }
       });
 
       return monthlyOrders;
@@ -2310,8 +1581,14 @@ exports.getAnalytics = async (req, res) => {
       const result = await ordersCollection.aggregate([
         {
           $addFields: {
-            createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
-            totalAsNumber: { $toDouble: "$total" }, // Convert the total value (string) to a number
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            totalAsNumber: { $convert: { input: { $ifNull: ["$total", "0"] }, to: "double", onError: 0 } },
           },
         },
         {
@@ -2331,12 +1608,12 @@ exports.getAnalytics = async (req, res) => {
         },
         {
           $group: {
-            _id: { createdAtDate: { $dateToString: { format: "%Y-%m-%d", date: "$createdAtDate" } } }, // Group by date (YYYY-MM-DD)
-            totalOrders: { $sum: "$totalAsNumber" }, // Sum the total value (numeric)
+            _id: { createdAtDate: { $dateToString: { format: "%Y-%m-%d", date: "$createdAtDate", onNull: "1970-01-01" } } },
+            totalOrders: { $sum: "$totalAsNumber" },
           },
         },
         {
-          $sort: { "_id.createdAtDate": 1 }, // Sort by date
+          $sort: { "_id.createdAtDate": 1 },
         },
       ]).toArray();
 
@@ -2345,12 +1622,14 @@ exports.getAnalytics = async (req, res) => {
 
       // Populate the dailyOrders array with data from the result
       result.forEach(item => {
-        // Find the index corresponding to the date in the last30Days array
-        const index = last30Days.indexOf(item._id.createdAtDate);
+        if (item._id && item._id.createdAtDate) {
+          // Find the index corresponding to the date in the last30Days array
+          const index = last30Days.indexOf(item._id.createdAtDate);
 
-        // If the date is found in the last 30 days, update the corresponding index in the dailyOrders array
-        if (index >= 0) {
-          dailyOrders[index] = item.totalOrders;
+          // If the date is found in the last 30 days, update the corresponding index in the dailyOrders array
+          if (index >= 0) {
+            dailyOrders[index] = item.totalOrders;
+          }
         }
       });
 
@@ -2366,8 +1645,14 @@ exports.getAnalytics = async (req, res) => {
       const result = await ordersCollection.aggregate([
         {
           $addFields: {
-            createdAtDate: { $toDate: "$createdAt" }, // Convert string to Date
-            totalAsNumber: { $toDouble: "$total" }, // Convert total value to a number
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            totalAsNumber: { $convert: { input: { $ifNull: ["$total", "0"] }, to: "double", onError: 0 } },
           },
         },
         {
@@ -2394,7 +1679,7 @@ exports.getAnalytics = async (req, res) => {
         },
         {
           $project: {
-            totalValue: { $toInt: "$totalValue" }, // Convert the total value to integer
+            totalValue: { $convert: { input: "$totalValue", to: "int", onError: 0 } }, // Convert the total value to integer
           },
         },
         {
@@ -2407,15 +1692,17 @@ exports.getAnalytics = async (req, res) => {
 
       // Populate the hourlyOrders array with data from the result
       result.forEach(item => {
-        const orderDate = new Date(item._id.year, 0); // Start of the year
-        orderDate.setDate(item._id.day); // Add the day of the year
-        orderDate.setHours(item._id.hour); // Add the hour
+        if (item._id && item._id.year && item._id.day && item._id.hour !== undefined) {
+          const orderDate = new Date(item._id.year, 0); // Start of the year
+          orderDate.setDate(item._id.day); // Add the day of the year
+          orderDate.setHours(item._id.hour); // Add the hour
 
-        const diffInHours = Math.floor((now - orderDate) / (1000 * 60 * 60)); // Difference in hours from now
+          const diffInHours = Math.floor((now - orderDate) / (1000 * 60 * 60)); // Difference in hours from now
 
-        if (diffInHours >= 0 && diffInHours < 24) {
-          const hourIndex = 23 - diffInHours; // Map to the last 24 hours
-          hourlyOrders[hourIndex] = item.totalValue; // Set the total value for that hour
+          if (diffInHours >= 0 && diffInHours < 24) {
+            const hourIndex = 23 - diffInHours; // Map to the last 24 hours
+            hourlyOrders[hourIndex] = item.totalValue; // Set the total value for that hour
+          }
         }
       });
 
@@ -2491,7 +1778,8 @@ exports.getAnalytics = async (req, res) => {
     // Send the analytics response
     res.status(200).json(analytics);
   } catch (error) {
-    res.status(400).json({ message: 'Error fetching analytics', error });
+    console.error("Error fetching analytics:", error);
+    res.status(400).json({ message: 'Error fetching analytics', error: error.toString() });
   }
 };
 exports.getShippingMethods = async (req, res) => {

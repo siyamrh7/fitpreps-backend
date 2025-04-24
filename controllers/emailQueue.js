@@ -1,23 +1,23 @@
 require('dotenv').config();
 const Bull = require('bull');
 const { orderEmailController, contactEmailController, orderEmailController2, requestPasswordResetController, newAccountEmailController,
-  subscriptionWelcomeController,
-  subscriptionConfirmationController,
-  weeklyMealReminderController,
-  sundayMealReminderController,
-  monthlyRenewalReminderController,
-  subscriptionCancelledController,
+
   subscriptionPausedController,
-  subscriptionAdjustedController,
-  universalReminderController,
-  universalReminderController2,
+  sundayMealReminderController,
   weeklySubscriptionStartedController,
   monthlySubscriptionStartedController,
   orderConfirmationEmailControllerWeekly,
   orderConfirmationEmailControllerMonthly,
   subscriptionWeeklyCancelledController,
   subscriptionMonthlyCancelledController,
-  newSubscriptionNotificationController
+  newSubscriptionNotificationController,
+  weeklyRenewalNotificationController,
+  monthlyRenewalNotificationController,
+  fridayMealReminderController,
+  monthlyMealReminderControllerFirst,
+  monthlyMealReminderControllerSecond,
+  monthlyMealReminderControllerLast,
+  dailyEmailSummaryControllerOwner
 } = require('./emailController');
 
 // Initialize the email queue
@@ -70,15 +70,34 @@ emailQueue.process(10, async (job) => {
       await subscriptionMonthlyCancelledController(mailOptions);
     }
     if (emailType == "sub-pause") {
-
       await subscriptionPausedController(mailOptions);
     }
-    if (emailType == "sub-reminder") {
-      await universalReminderController(mailOptions);
-    }
-    if (emailType == "sub-reminder-monthly") {
-      await universalReminderController2(mailOptions);
-    }
+   if(emailType == "sub-renewal-weekly"){
+    await weeklyRenewalNotificationController(mailOptions);
+   }
+   if(emailType == "sub-renewal-monthly"){
+    await monthlyRenewalNotificationController(mailOptions);
+   }
+   if(emailType == "sub-friday-reminder"){
+    await fridayMealReminderController(mailOptions);
+   }
+   if(emailType == "sub-sunday-reminder"){
+    await sundayMealReminderController(mailOptions);
+   }
+  
+   if(emailType == "sub-monthly-reminder-first"){
+    await monthlyMealReminderControllerFirst(mailOptions);
+   }
+   if(emailType == "sub-monthly-reminder-second"){
+    await monthlyMealReminderControllerSecond(mailOptions);
+   }
+   if(emailType == "sub-monthly-reminder-last"){
+    await monthlyMealReminderControllerLast(mailOptions);
+   }
+   if(emailType == "sub-daily-summary-owner"){
+    await dailyEmailSummaryControllerOwner(mailOptions);
+   }
+
 
   } catch (error) {
     console.error(`Error sending email for order #${orderData._id}:`, error);

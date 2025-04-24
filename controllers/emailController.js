@@ -960,81 +960,7 @@ exports.orderEmailController2 = async (orderData, title, description) => {
 </div>
 </div>
   `
-    // Mail options
-    // const mailOptions = {
-    //   from: "Fitpreps",
-    //   to: "bestellingen@fitpreps.nl",
-    //   subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
-    //   html: `<div style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #333333;">
-    //     <div style="max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;">
-    //       <!-- Header -->
-    //       <div style="background-color: #ff4e00; padding: 10px;">
-    //         <h1 style="margin: 0; font-size: 18px; text-align: center; color: #ffffff;">New Order #${orderData._id}</h1>
-    //       </div>
-
-    //       <!-- Content -->
-    //       <div style="padding: 20px;">
-    //         <p style="margin: 0; font-size: 16px;">
-    //           ${title} <br><br>
-    //         </p>
-
-    //         <h2 style="margin-top: 20px; font-size: 18px;">Overzicht van jouw bestelling met referentie #${orderData._id}</h2>
-
-    //         <!-- Order Details -->
-    //         <div style="border-bottom: 1px solid #dddddd; padding-bottom: 15px; margin-bottom: 15px;">
-    //         ${productHTML}
-    //         </div>
-
-    //         <!-- Summary -->
-    //         <table style="width: 100%; font-size: 16px; margin-bottom: 20px;">
-    //           <tr>
-    //             <td style="padding: 5px 0;">Subtotaal</td>
-    //             <td style="padding: 5px 0; text-align: right;">€ ${(parseFloat(orderData.total) - (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax))).toFixed(2)}</td>
-    //           </tr>
-    //           <tr>
-    //             <td style="padding: 5px 0;">Korting</td>
-    //             <td style="padding: 5px 0; text-align: right;">-€ ${orderData.metadata._cart_discount}</td>
-    //           </tr>
-    //           <tr>
-    //             <td style="padding: 5px 0;">Verzending</td>
-    //             <td style="padding: 5px 0; text-align: right;">€ ${orderData.metadata._order_shipping == "0" ? "Gratis" : (parseFloat(orderData.metadata._order_shipping) + parseFloat(orderData.metadata._order_shipping_tax)).toFixed(2)}</td>
-    //           </tr>
-    //           <tr>
-    //             <td style="padding: 5px 0; font-weight: bold;">Totaal</td>
-    //             <td style="padding: 5px 0; text-align: right; font-weight: bold;">€ ${orderData.total}</td>
-    //           </tr>
-    //         </table>
-
-    //         <!-- Addresses -->
-    //         <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 20px;">
-    //           <div style="width: 50%;">
-    //             <h3 style="margin: 0; font-size: 16px;">Factuuradres</h3>
-    //             <p style="margin: 5px 0 0;">${orderData.metadata._billing_first_name} ${orderData.metadata._billing_last_name}<br>${orderData.metadata._billing_address_1}<br>${orderData.metadata._billing_address_2}<br>${orderData.metadata._billing_postcode} ${orderData.metadata._billing_city}<br>${orderData.metadata._billing_country}<br>${orderData.metadata._billing_phone}<br>${orderData.metadata._billing_email}</p>
-    //           </div>
-    //           <div>
-    //             <h3 style="margin: 0; font-size: 16px;">Verzendadres</h3>
-    //             <p style="margin: 5px 0 0;">${orderData.metadata._shipping_first_name} ${orderData.metadata._shipping_last_name}<br>${orderData.metadata._shipping_address_1}<br>${orderData.metadata._shipping_address_2}<br>${orderData.metadata._shipping_postcode} ${orderData.metadata._shipping_city}<br>${orderData.metadata._shipping_country}<br>${orderData.metadata._shipping_phone}</p>
-    //           </div>
-    //         </div>
-
-    //         <!-- Footer -->
-    //         <div style="text-align: center; border-top: 1px solid #dddddd; padding-top: 15px;">
-    //           <p style="margin: 0; font-size: 14px;">Volg ons op</p>
-    //           <p style="margin: 10px 0;">
-    //             <a href="https://www.facebook.com/FitPrepsOfficial" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook"></a>
-    //             <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="margin: 0 5px; text-decoration: none; color: #333;"><img height="20px" width="20px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png?20200512141346" alt="Instagram"></a>
-    //           </p>
-    //           <p style="margin: 0; font-size: 14px;">Deze email is verzonden door: info@fitpreps.nl</p>
-    //           <p style="margin: 0; font-size: 14px;">Stuur voor vragen een e-mail naar: <a href="mailto:info@fitpreps.nl" style="color: #ff4e00;">info@fitpreps.nl</a></p>
-    //           <p style="margin: 0; font-size: 14px;"><a href="https://fitpreps.nl" style="color: #ff4e00;">Privacy policy</a> | <a href="https://fitpreps.nl" style="color: #ff4e00;">Klantenservice</a></p>
-    //         </div>
-    //       </div>
-    //     </div>
-    // </div>
-    //       `,
-    //   attachments,
-    // };
-
+    
     const mailOptions = {
       subject: `Fitpreps.nl: Nieuwe bestelling #${orderData._id}`,
       //This "from" is optional if you want to send from group email. For this you need to give permissions in that group to send emails from it.
@@ -1149,104 +1075,6 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
-
-
-//subscription confirmation controller 
-exports.subscriptionConfirmationController = async (mailOptions) => {
-  try {
-    const { to, name, profile } = mailOptions;
-    const subject = 'Je abonnementsvorm is succesvol aangepast';
-    const html = `
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Je abonnementsvorm is succesvol aangepast</title>
-</head>
-<body style="margin:0; padding:0; background:#f7f8fa; font-family:'Segoe UI', sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:720px; margin:auto; padding:60px 20px;">
-    <tr>
-      <td>
-
-        <!-- Layout met zijbalk -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-left:6px solid #FD5001; background:#ffffff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.04);">
-          <tr>
-            <td style="padding:40px 40px 30px;">
-
-              <!-- Titelbalk -->
-              <table width="100%">
-                <tr>
-                  <td style="background:#FD5001; padding:20px; border-radius:14px">
-                    <h1 style="margin:0; font-size:26px;  color:#fff;">Je abonnementsvorm is succesvol aangepast</h1>
-                    <p style="margin:10px 0 0; font-size:15px; color:#ffe9de;">Je aanvraag is goedgekeurd en de wijziging is direct doorgevoerd.</p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Inhoud -->
-              <div style="margin-top:30px; font-size:15px; line-height:1.7; color:#333;">
-                <p>Hi <strong>${name}</strong>,</p>
-
-                <p>
-                  Goed nieuws: je verzoek om je abonnementsvorm aan te passen is goedgekeurd en de wijziging is direct doorgevoerd in je account.
-                </p>
-
-                <p>
-                  Vanaf nu geldt je nieuwe abonnementsvorm en kun je daar je maaltijden en levermomenten op afstemmen zoals je gewend bent.
-                </p>
-              </div>
-
-              <!-- Wat nu box -->
-              <div style="margin-top:40px; background:#fdf5f2; border-radius:10px; padding:20px 24px; border-left:5px solid #FD5001;">
-                <h3 style="margin:0 0 10px; font-size:16px; color:#FD5001;">Wat nu?</h3>
-                <p style="margin:0; font-size:15px; color:#444;">
-                  Log in op je account om te zien wat er veranderd is en om je maaltijden te kiezen voor de komende levering.
-                </p>
-              </div>
-
-              <!-- Knop -->
-              <div style="margin-top:35px; text-align:left;">
-                <a href="${profile}" style="background-color:#FD5001; color:#ffffff; padding:14px 28px; font-size:15px; text-decoration:none; font-weight:600; border-radius:8px; display:inline-block;">
-                  Naar Mijn Account
-                </a>
-              </div>
-
-              <!-- Ondersteuning & afsluiting -->
-              <div style="margin-top:40px; font-size:14px; color:#555; line-height:1.6;">
-                <p>
-                  Heb je vragen over je nieuwe abonnement of hulp nodig bij het kiezen van maaltijden? Laat het ons weten – we helpen je graag verder via 
-                  <a href="mailto:info@fitpreps.nl" style="color:#FD5001;">info@fitpreps.nl</a>.
-                </p>
-
-                <p style="margin-top:24px;">
-                  Bedankt voor je vertrouwen in Fit Preps – en veel plezier met je vernieuwde abonnement!
-                </p>
-
-                <p style="margin:0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
-              </div>
-
-            </td>
-          </tr>
-        </table>
-
-        <!-- Footer -->
-        <p style="margin-top:30px; font-size:12px; color:#999; text-align:center;">© 2025 Fit Preps • Alle rechten voorbehouden</p>
-
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>
- `;
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending subscription adjusted email:', error);
-    throw error;
-  }
-};
 
 
 
@@ -1539,393 +1367,8 @@ exports.monthlySubscriptionStartedController = async (mailOptions) => {
   }
 };
 
-// Weekly meal reminder email
-exports.weeklyMealReminderController = async (mailOptions) => {
-  try {
-    const { to, name, nextDeliveryDate, mealPlan } = mailOptions;
-    const subject = 'Herinnering: Kies je maaltijden';
-    const html = `
-  <!DOCTYPE html>
-<html lang="nl" style="margin:0; padding:0;">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Herinnering: Kies je maaltijden</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f2f4f6; font-family:'Helvetica Neue', Arial, sans-serif;">
 
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.05);">
 
-    <!-- Banner -->
-    <tr>
-      <td style="background-color:#ffffff; padding:0;">
-        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744423616/fitpreps/qsweql7kcuhevqzwexbd.webp" alt="Maaltijd Herinnering" style="width:100%; height:auto; display:block;">
-      </td>
-    </tr>
-
-    <!-- Header Text -->
-    <tr>
-      <td style="text-align:center; padding:40px 30px 10px 30px;">
-        <h2 style="margin:0; font-size:24px; color:#333333;">Heb jij je maaltijden al gekozen?</h2>
-        <p style="color:#FD5001; font-size:14px; margin-top:8px;">Je hebt nog tot <strong>zondag 23:59 uur</strong> om je keuzes door te geven!</p>
-      </td>
-    </tr>
-
-    <!-- Body Content -->
-    <tr>
-      <td style="padding:20px 30px 0 30px; color:#444444;">
-        <p style="font-size:16px; line-height:1.6;">Hi <strong>${name}</strong>,</p>
-
-        <p style="font-size:16px; line-height:1.6;">
-          Een kleine reminder van ons: je hebt nog tot <strong>zondag 23:59 uur</strong> de tijd om jouw maaltijden en leverdag voor volgende week te kiezen!
-        </p>
-
-        <p style="font-size:16px; line-height:1.6;">
-          Je zit nog ruim op tijd – maar het is wel fijn om het alvast te regelen, zodat je volgende week weer lekker en zonder stress kunt genieten van je Fit Preps maaltijden.
-        </p>
-
-        <!-- Call to Action -->
-        <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:8px; display:inline-block; font-weight:bold;">
-            Kies Mijn Maaltijden
-          </a>
-        </div>
-
-        <p style="font-size:16px; line-height:1.6;">
-          Zin in een favoriet gerecht of juist iets nieuws proberen? Elke week staat er weer iets lekkers voor je klaar.
-        </p>
-
-        <p style="font-size:16px; line-height:1.6;">
-          Nog niks geselecteerd? Geen zorgen – zondag sturen we je nog een laatste reminder. Maar eerder geregeld is eerder ontspannen, toch?
-        </p>
-
-        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
-          Fijn weekend alvast!
-        </p>
-
-        <p style="font-size:16px;">Met gezonde groet, <br><strong>Team Fit Preps</strong></p>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color:#f8f8f8; text-align:center; padding:20px; font-size:12px; color:#999;">
-        © 2025 Fit Preps • Alle rechten voorbehouden
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>
-
-    `;
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending weekly meal reminder:', error);
-    throw error;
-  }
-};
-
-// Sunday meal reminder email
-exports.sundayMealReminderController = async (mailOptions) => {
-  try {
-    const { to, name, nextDeliveryDate, mealPlan } = mailOptions;
-    const subject = 'Tijd om je maaltijden te kiezen';
-    const html = `
-     <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tijd om je maaltijden te kiezen</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Segoe UI', sans-serif;">
-
-  <table  width="100%" cellpadding="0" cellspacing="0" style="max-width:660px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.07);">
-
-    <!-- Wavy Header with Brand Color -->
-    <tr>
-      <td style="background-color:#FD5001; position:relative; text-align:center; padding:50px 30px 20px 30px;">
-        <h1 style="margin:0; font-size:28px; color:#fff; font-family:'Georgia', serif;">Tijd om je maaltijden voor volgende maand te kiezen!</h1>
-        <p style="color:#ffe9dc; font-size:15px; margin-top:10px;">Je nieuwe Fit Preps maand komt eraan – vergeet je selectie niet.</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="line-height:0;">
-        <svg viewBox="0 0 500 50" preserveAspectRatio="none" style="display:block; width:100%; height:50px;">
-          <path d="M0,0 C150,100 350,-50 500,30 L500,00 L0,0 Z" style="fill:#FD5001;"></path>
-        </svg>
-      </td>
-    </tr>
-
-    <!-- Message Content -->
-    <tr>
-      <td style="padding:30px; color:#333333;">
-        <p style="font-size:16px; line-height:1.7;">Hi <strong>${name}</strong>,</p>
-        <p style="font-size:16px; line-height:1.7;">
-          Even een korte reminder: jouw nieuwe maand bij Fit Preps komt eraan – en dat betekent dat het weer tijd is om je maaltijden en leverdagen te kiezen.
-        </p>
-        <p style="font-size:16px; line-height:1.7;">
-          Je bent nog ruim op tijd, maar dit is een mooi moment om alvast je favorieten aan te vinken (of iets nieuws te proberen!).
-        </p>
-      </td>
-    </tr>
-
-    <!-- CTA Block -->
-    <tr>
-      <td style="padding:20px 30px;">
-        <table cellpadding="0" cellspacing="0" width="100%" style="border-radius:12px; background:#fff6f2; border:2px dashed #FD5001;">
-          <tr>
-            <td style="text-align:center; padding:24px;">
-              <p style="margin:0 0 15px; font-size:16px; color:#333;">
-                Log in op je account om je selectie te maken:
-              </p>
-              <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
-                Maak mijn selectie
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Footer Message -->
-    <tr>
-      <td style="padding:30px; color:#555555; font-size:15px;">
-        <p style="margin:0 0 16px 0;">Hulp nodig of vragen? Reageer gerust op deze mail – we staan voor je klaar.</p>
-        <p style="margin:0 0 16px 0;">Je bent er bijna – nog een paar klikken en jouw nieuwe maand vol gemak en gezonde maaltijden staat klaar.</p>
-        <p style="margin:0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#999999;">
-        © 2025 Fit Preps • Alle rechten voorbehouden
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>
-
-    `;
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending Sunday meal reminder:', error);
-    throw error;
-  }
-};
-
-// Monthly renewal reminder email
-exports.monthlyRenewalReminderController = async (mailOptions) => {
-  try {
-    const { to, name, subscription } = mailOptions;
-    const subject = 'Laatste Kans';
-    const html = `
-   <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laatste Kans</title>
-</head>
-<body style="margin:0; padding:0; background:#f2f3f4; font-family:'Segoe UI', sans-serif;">
-
-  <table align="center" cellpadding="0" cellspacing="0" width="100%" style="max-width:660px; margin:auto; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.08);">
-
-    <!-- Hero Image -->
-    <tr>
-      <td>
-        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744428317/fitpreps/ptc18wwvbhvqtotr6cyf.webp" alt="Maaltijd Preview" style="width:100%; display:block; height:auto;">
-      </td>
-    </tr>
-
-    <!-- Header Text -->
-    <tr>
-      <td style="padding:40px 30px 10px 30px; text-align:center;">
-        <h1 style="margin:0; font-size:28px; font-family:'Georgia', serif; color:#FD5001;">Laatste kans om je maaltijden voor volgende maand te kiezen!</h1>
-        <p style="font-size:14px; color:#888; margin-top:10px;">Morgen start je nieuwe maand – nu kun je nog je keuze aanpassen.</p>
-      </td>
-    </tr>
-
-    <!-- Body Text -->
-    <tr>
-      <td style="padding:20px 30px 10px 30px; color:#333;">
-        <p style="font-size:16px; line-height:1.7;">Hi <strong>${name}</strong>,</p>
-
-        <p style="font-size:16px; line-height:1.7;">
-          Een snelle heads-up: jouw nieuwe Fit Preps maand start <strong>morgen</strong>.
-        </p>
-
-        <p style="font-size:16px; line-height:1.7;">
-          Heb je je maaltijden en leverdag nog niet gekozen? Dan is dit je <strong>laatste kans</strong> om je selectie aan te passen.
-        </p>
-
-        <!-- Info Block -->
-        <div style="background:#fef9f6; border-left:5px solid #FD5001; padding:20px; border-radius:8px; margin:30px 0;">
-          <p style="margin:0; font-size:15px; color:#444;">
-            <strong>Wat als je niets doet?</strong><br>
-            Geen probleem – dan houden we automatisch dezelfde maaltijden en leverdag aan als afgelopen maand. Lekker makkelijk.<br><br>
-            Maar… als je iets nieuws wilde proberen of je planning is veranderd, dan is <strong>nú</strong> het moment om dat door te geven.
-          </p>
-        </div>
-
-        <p style="font-size:16px; line-height:1.7;">
-          Zo ben je er zeker van dat je krijgt wat je écht wilt – en op een moment dat het jou uitkomt.
-        </p>
-      </td>
-    </tr>
-
-    <!-- CTA Card -->
-    <tr>
-      <td style="padding:0 30px 40px;">
-        <table align="center" style="width:100%; background-color:#fff4ef; border-radius:14px; box-shadow:0 0 20px rgba(253,79,1,0.15); text-align:center; padding:30px;">
-          <tr>
-            <td>
-              <p style="margin:0 0 20px; font-size:15px; color:#333;">Pas je selectie aan via je account:</p>
-              <a href="${process.env.FRONTEND_URI}" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; text-decoration:none; border-radius:30px; display:inline-block;">
-                Selectie Aanpassen
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Footer Message -->
-    <tr>
-      <td style="padding:0 30px 30px; color:#555; font-size:15px;">
-        <p style="margin-bottom:16px;">Hulp nodig? Reageer gerust op deze mail – we helpen je graag.</p>
-        <p style="margin:0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#999;">
-        © 2025 Fit Preps • Alle rechten voorbehouden
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>
-
-    `;
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending monthly renewal reminder:', error);
-    throw error;
-  }
-};
-
-// Subscription cancelled email
-exports.subscriptionCancelledController = async (mailOptions) => {
-  try {
-    const { to, name } = mailOptions;
-    const subject = 'Laatste Kansbevestiging van opgezegd abonnement';
-    const html = `
-      <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laatste Kans</title>
-</head>
-<body style="margin:0; padding:0; background:#f5f5f5; font-family:'Segoe UI', sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:680px; margin:auto; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.05);">
-
-    <!-- Wavy Goodbye Header -->
-    <tr>
-      <td style="background-color:#FD5001; text-align:center; padding:60px 30px 20px;">
-        <h1 style="margin:0; font-size:28px; color:#ffffff; font-family:'Georgia', serif;">We hebben genoten van je als klant!</h1>
-        <p style="color:#ffe6db; font-size:15px; margin-top:10px;">Je abonnement is opgezegd – dit kun je nog verwachten.</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="line-height:0;">
-        <svg viewBox="0 0 500 60" preserveAspectRatio="none" style="display:block; width:100%; height:60px;">
-          <path d="M0,0 C150,60 350,0 500,60 L500,00 L0,0 Z" style="fill:#FD5001;"></path>
-        </svg>
-      </td>
-    </tr>
-
-    <!-- Message Content -->
-    <tr>
-      <td style="padding:30px; color:#333;">
-        <p style="font-size:16px; line-height:1.7;">Hi <strong>${name}</strong>,</p>
-        <p style="font-size:16px; line-height:1.7;">
-          Wat jammer dat je stopt – maar bovenal: bedankt dat je deel was van de Fit Preps-reis!
-        </p>
-        <p style="font-size:16px; line-height:1.7;">
-          We hopen dat onze maaltijden jouw week makkelijker hebben gemaakt en je geholpen hebben om je goed te voelen. Mocht je ooit terug willen komen: je bent altijd welkom – we zouden je graag weer zien!
-        </p>
-      </td>
-    </tr>
-
-    <!-- Info Section -->
-    <tr>
-      <td style="padding:0 30px 30px;">
-        <table width="100%" style="background:#fff9f6; border-radius:14px; padding:25px; box-shadow:inset 0 0 0 1px #fbe0d6;">
-          <tr>
-            <td>
-              <h3 style="margin:0 0 15px; font-size:18px; color:#FD5001;">📦 Wat gebeurt er nu?</h3>
-              <ul style="padding-left:20px; margin:0; color:#444; font-size:15px; line-height:1.7;">
-                <li><strong>Laatste levering:</strong>  op je gekozen dag</li>
-                <li><strong>Laatste betaling:</strong> wordt automatisch verwerkt voor deze levering</li>
-              </ul>
-              <p style="margin-top:16px; font-size:15px;">
-                Daarna stopt je abonnement en worden er geen kosten meer in rekening gebracht.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- CTA Reminder -->
-    <tr>
-      <td style="padding:0 30px;">
-        <div style="background:#fefefe; border-radius:12px; padding:24px; text-align:center; border:2px solid #FD5001; margin-bottom:30px;">
-          <p style="font-size:15px; color:#444; margin:0;">
-            Je kunt je laatste maaltijden en leverdag nog kiezen via je account.
-          </p>
-        </div>
-      </td>
-    </tr>
-
-    <!-- Footer Note -->
-    <tr>
-      <td style="padding:0 30px 40px; font-size:16px; color:#333;">
-        <p style="margin-bottom:18px;">
-          Nogmaals bedankt dat je voor Fit Preps hebt gekozen – en hopelijk tot ziens!
-        </p>
-        <p>Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#999;">
-        © 2025 Fit Preps • Alle rechten voorbehouden
-      </td>
-    </tr>
-
-  </table>
-</body>
-</html>
-
-    `;
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending subscription cancelled email:', error);
-    throw error;
-  }
-};
-
-// Subscription paused email
 exports.subscriptionPausedController = async (mailOptions) => {
   try {
     const { to, name, ResumeLink } = mailOptions;
@@ -2093,216 +1536,6 @@ exports.subscriptionAdjustedController = async (mailOptions) => {
 };
 
 
-
-exports.universalReminderController = async (mailOptions) => {
-  try {
-    const {
-      to,
-      name,
-      reminderTitle = 'Herinnering: Kies je maaltijden',
-      reminderSubject = 'Herinnering: Kies je maaltijden',
-      buttonText = 'Kies Mijn Maaltijden'
-    } = mailOptions;
-
-    const subject = reminderSubject;
-    const html = `
-   <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laatste Kans om je Maaltijden te Kiezen</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f6f6f6; font-family:'Helvetica Neue', Arial, sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 0 20px rgba(0,0,0,0.08);">
-
-    <!-- Hero Block -->
-    <tr>
-      <td style="padding:40px 30px 30px 30px; background-color:#ffffff; text-align:center;">
-        <h1 style="margin:0; font-size:28px; color:#FD5001;">Laatste Kans: Kies Vandaag je Maaltijden</h1>
-        <p style="margin-top:10px; color:#555; font-size:16px;">U heeft tot <strong>zondag 23:59 uur</strong>  de tijd voordat u uw bestelling plaatst.</p>
-      </td>
-    </tr>
-
-    <!-- Countdown Bar -->
-    <tr>
-      <td style="background-color:#fff1ea; padding:20px; text-align:center;">
-        <p style="margin:0; font-size:16px; color:#333;">
-          ⏳ Nog geen maaltijden gekozen? Dan herhalen we automatisch je vorige selectie.
-        </p>
-      </td>
-    </tr>
-
-    <!-- Visual Image Section -->
-    <tr>
-      <td style="text-align: center;width: 100%;">
-        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744426962/fitpreps/u2xmo1qiczex0cce4mos.webp" alt="Fit Preps Herinnering" style="margin:auto; width:50%; display:block; height:auto;text-align: center;" />
-      </td>
-    </tr>
-
-    <!-- Message Section -->
-    <tr>
-      <td style="padding:30px 30px 10px 30px; color:#333;">
-        <p style="font-size:16px; line-height:1.6;">
-          Hi <strong>${name}</strong>,
-        </p>
-        <p style="font-size:16px; line-height:1.6;">
-          Een korte reminder – vandaag is je <strong>laatste kans</strong> om jouw maaltijden en leverdag voor komende week te kiezen.
-        </p>
-        <p style="font-size:16px; line-height:1.6;">
-          Kies je niets? Dan nemen we automatisch jouw keuzes van vorige week over, inclusief de leverdag. Geen probleem natuurlijk – maar we willen je wel de kans geven om eventueel iets anders te kiezen (of juist iets nieuws te proberen!).
-        </p>
-      </td>
-    </tr>
-
-    <!-- CTA Card -->
-    <tr>
-      <td style="padding:20px 30px;">
-        <div style="background-color:#fdf1eb; padding:24px; border-radius:10px; text-align:center; border:2px solid #FD5001;">
-          <p style="font-size:16px; color:#333; margin-bottom:20px;">
-            ✅ Er is nog tijd – maar wacht niet te lang!
-          </p>
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; font-weight:bold; border-radius:30px; display:inline-block;">
-            Kies Mijn Maaltijden
-          </a>
-        </div>
-      </td>
-    </tr>
-
-    <!-- Support Section -->
-    <tr>
-      <td style="padding:20px 30px; font-size:15px; line-height:1.6; color:#444;">
-        <p style="margin-top:0;">Na middernacht gaat je bestelling naar de keuken en staat alles vast.</p>
-        <p style="margin-bottom:0;">Heb je vragen of hulp nodig? Stuur ons gerust een berichtje – we helpen je graag.</p>
-      </td>
-    </tr>
-
-    <!-- Sign-off -->
-    <tr>
-      <td style="padding:20px 30px 30px 30px; font-size:15px; color:#333;">
-        <p style="margin:0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color:#f2f2f2; text-align:center; padding:20px; font-size:12px; color:#888;">
-        © 2025 Fit Preps • Alle rechten voorbehouden
-      </td>
-    </tr>
-
-  </table>
-</body>
-</html>
-
-    `;
-
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending reminder email:', error);
-    throw error;
-  }
-};
-
-exports.universalReminderController2 = async (mailOptions) => {
-  try {
-    const {
-      to,
-      name,
-      reminderTitle = 'Herinnering: Kies je maaltijden',
-      reminderSubject = 'Herinnering: Kies je maaltijden',
-      buttonText = 'Kies Mijn Maaltijden'
-    } = mailOptions;
-
-    const subject = reminderSubject;
-    const html = `
- <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tijd om je maaltijden te kiezen</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Segoe UI', sans-serif;">
-
-  <table  width="100%" cellpadding="0" cellspacing="0" style="max-width:660px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.07);margin: auto;">
-
-    <!-- Wavy Header with Brand Color -->
-    <tr>
-      <td style="background-color:#FD5001; position:relative; text-align:center; padding:50px 30px 20px 30px;">
-        <h1 style="margin:0; font-size:28px; color:#fff; font-family:'Georgia', serif;">Tijd om je maaltijden voor volgende maand te kiezen!</h1>
-        <p style="color:#ffe9dc; font-size:15px; margin-top:10px;">Je nieuwe Fit Preps maand komt eraan – vergeet je selectie niet.</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="line-height:0;">
-        <svg viewBox="0 0 500 50" preserveAspectRatio="none" style="display:block; width:100%; height:50px;">
-          <path d="M0,0 C150,100 350,-50 500,30 L500,00 L0,0 Z" style="fill:#FD5001;"></path>
-        </svg>
-      </td>
-    </tr>
-
-    <!-- Message Content -->
-    <tr>
-      <td style="padding:30px; color:#333333;">
-        <p style="font-size:16px; line-height:1.7;">Hi <strong>${name}</strong>,</p>
-        <p style="font-size:16px; line-height:1.7;">
-          Even een korte reminder: jouw nieuwe maand bij Fit Preps komt eraan – en dat betekent dat het weer tijd is om je maaltijden en leverdagen te kiezen.
-        </p>
-        <p style="font-size:16px; line-height:1.7;">
-          Je bent nog ruim op tijd, maar dit is een mooi moment om alvast je favorieten aan te vinken (of iets nieuws te proberen!).
-        </p>
-      </td>
-    </tr>
-
-    <!-- CTA Block -->
-    <tr>
-      <td style="padding:20px 30px;">
-        <table cellpadding="0" cellspacing="0" width="100%" style="border-radius:12px; background:#fff6f2; border:2px dashed #FD5001;">
-          <tr>
-            <td style="text-align:center; padding:24px;">
-              <p style="margin:0 0 15px; font-size:16px; color:#333;">
-                Log in op je account om je selectie te maken:
-              </p>
-              <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
-                Maak mijn selectie
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Footer Message -->
-    <tr>
-      <td style="padding:30px; color:#555555; font-size:15px;">
-        <p style="margin:0 0 16px 0;">Hulp nodig of vragen? Reageer gerust op deze mail – we staan voor je klaar.</p>
-        <p style="margin:0 0 16px 0;">Je bent er bijna – nog een paar klikken en jouw nieuwe maand vol gemak en gezonde maaltijden staat klaar.</p>
-        <p style="margin:0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#999999;">
-        © 2025 Fit Preps • Alle rechten voorbehouden
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>
-
-
-    `;
-
-    await sendEmail(to, subject, html);
-  } catch (error) {
-    console.error('Error sending reminder email:', error);
-    throw error;
-  }
-};
 
 // Order confirmation email (Nederlands)
 exports.orderConfirmationEmailControllerWeekly = async (mailOptions) => {
@@ -2774,5 +2007,819 @@ exports.newSubscriptionNotificationController = async (subscriptionData) => {
     
   } catch (error) {
     console.error('Error sending new subscription notification email:', error);
+  }
+};
+
+// Weekly subscription renewal notification
+exports.weeklyRenewalNotificationController = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Nieuwe week, nieuwe maaltijden – Je punten zijn toegevoegd!';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nieuwe week, nieuwe maaltijden – Je punten zijn toegevoegd!</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Nieuwe week, nieuwe maaltijden!</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Je punten zijn toegevoegd aan je account</p>
+      </td>
+    </tr>
+    
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744423616/fitpreps/qsweql7kcuhevqzwexbd.webp" alt="Fit Preps Maaltijden" style="width:100%; height:auto; display:block;">
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Het is maandag, dus dat betekent dat je wekelijkse Fit Preps abonnement is vernieuwd.
+          Je punten zijn zojuist toegevoegd aan je account en je kunt vanaf nu je maaltijden kiezen voor de komende week.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD5001; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD5001; font-size:18px;">Wat kun je nu doen?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Log in op je account</li>
+            <li style="margin-bottom:10px;">Kies je favoriete maaltijden</li>
+            <li style="margin-bottom:0;">Selecteer je leverdag voor volgende week (maandag t/m vrijdag)</li>
+          </ul>
+        </div>
+        
+        <div style="background-color:#fffbf0; border:2px dashed #FD5001; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Let op:</h3>
+          <p style="margin-bottom:0; font-size:16px;">
+            Als je geen keuze maakt, sturen we je automatisch dezelfde maaltijden als vorige week op dezelfde leverdag.<br>
+            We herinneren je hieraan nogmaals via e-mail op vrijdag en zondag.
+          </p>
+        </div>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Kies je maaltijden
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen? Mail ons gerust via <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Fijne week en eet smakelijk!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD5001; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD5001; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending weekly renewal notification email:', error);
+    throw error;
+  }
+};
+
+// Monthly subscription renewal notification
+exports.monthlyRenewalNotificationController = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Nieuwe maand, nieuwe maaltijden – Je punten zijn toegevoegd!';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nieuwe maand, nieuwe maaltijden – Je punten zijn toegevoegd!</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Nieuwe maand, nieuwe maaltijden!</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Je punten zijn toegevoegd aan je account</p>
+      </td>
+    </tr>
+    
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744428317/fitpreps/ptc18wwvbhvqtotr6cyf.webp" alt="Fit Preps Maaltijden" style="width:100%; height:auto; display:block;">
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Het is tijd voor een nieuwe maand, dus dat betekent dat je maandelijkse Fit Preps abonnement is vernieuwd.
+          Je punten zijn zojuist toegevoegd aan je account en je kunt vanaf nu je maaltijden kiezen voor deze maand.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD5001; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD5001; font-size:18px;">Wat kun je nu doen?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Log in op je account</li>
+            <li style="margin-bottom:10px;">Kies je favoriete maaltijden</li>
+            <li style="margin-bottom:0;">Selecteer je leverdag voor deze maand (maandag t/m vrijdag)</li>
+          </ul>
+        </div>
+        
+        <div style="background-color:#fffbf0; border:2px dashed #FD5001; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Let op:</h3>
+          <p style="margin-bottom:0; font-size:16px;">
+            Als je geen keuze maakt, sturen we je automatisch dezelfde maaltijden als vorige maand op dezelfde leverdag.<br>
+            Zorg dat je op tijd je keuze doorgeeft voor optimale planning.
+          </p>
+        </div>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Kies je maaltijden
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen? Mail ons gerust via <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Fijne maand en eet smakelijk!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD5001; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD5001; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly renewal notification email:', error);
+    throw error;
+  }
+};
+
+// Friday meal reminder email
+exports.fridayMealReminderController = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Vergeet je niet je maaltijden te kiezen voor volgende week?';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vergeet je niet je maaltijden te kiezen?</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Vergeet je niet je maaltijden te kiezen?</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Er is nog tijd om te selecteren voor volgende week</p>
+      </td>
+    </tr>
+    
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744423616/fitpreps/qsweql7kcuhevqzwexbd.webp" alt="Fit Preps Maaltijden" style="width:100%; height:auto; display:block;">
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          We zagen dat je je maaltijden voor volgende week nog niet hebt gekozen.
+          Geen zorgen, je hebt nog de tijd!
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Je kunt je maaltijden en leverdag voor volgende week nog selecteren tot zondag 23:59 uur.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD5001; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD5001; font-size:18px;">Wat moet je doen?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Log in op je account</li>
+            <li style="margin-bottom:10px;">Kies je maaltijden voor volgende week</li>
+            <li style="margin-bottom:0;">Selecteer een leverdag (maandag t/m vrijdag)</li>
+          </ul>
+        </div>
+        
+        <div style="background-color:#fffbf0; border:2px dashed #FD5001; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Let op:</h3>
+          <p style="margin-bottom:0; font-size:16px;">
+            Als je voor zondag 23:59 geen keuze maakt, ontvang je automatisch dezelfde maaltijden als vorige week op dezelfde leverdag.
+          </p>
+        </div>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Kies je maaltijden nu
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen? Stuur ons gerust een berichtje via <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Fijn weekend!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD5001; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD5001; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending Friday meal reminder email:', error);
+    throw error;
+  }
+};
+
+// Sunday meal reminder email (final reminder)
+exports.sundayMealReminderController = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Laatste reminder – Maaltijden voor volgende week';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laatste reminder – Maaltijden voor volgende week</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Laatste reminder</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Vandaag is de deadline voor je maaltijdkeuze</p>
+      </td>
+    </tr>
+    
+    <!-- Countdown Banner -->
+    <tr>
+      <td style="background-color:#fff1ea; padding:15px; text-align:center; font-weight:bold; color:#333; font-size:16px;">
+        ⏰ Nog enkele uren beschikbaar: Tot vanavond 23:59
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Je hebt nog geen keuze gemaakt voor je maaltijden en leverdag van volgende week.
+        </p>
+        
+        <div style="background-color:#fffbf0; border:2px dashed #FD5001; padding:20px; margin:25px 0; border-radius:8px; text-align:center;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Geen stress</h3>
+          <p style="margin-bottom:0; font-size:16px;">
+            Als je bewust dezelfde maaltijden en leverdag als vorige week wilt, hoef je niets te doen. We zorgen ervoor dat je dezelfde selectie ontvangt op dezelfde dag als vorige week.
+          </p>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Wil je toch iets aanpassen? Dan kan dat nog tot vanavond 23:59 via je account:
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD5001; padding:20px; margin:25px 0; border-radius:8px;">
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Log in</li>
+            <li style="margin-bottom:10px;">Kies je maaltijden</li>
+            <li style="margin-bottom:0;">Selecteer een leverdag (maandag t/m vrijdag)</li>
+          </ul>
+        </div>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Aanpassen vóór 23:59
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je vragen of hulp nodig? Stuur gerust een mailtje naar <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Fijne zondag!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD5001; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD5001; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending Sunday meal reminder email:', error);
+    throw error;
+  }
+};
+
+
+// Monthly meal reminder for subscribers who haven't chosen meals
+exports.monthlyMealReminderControllerFirst = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Je hebt je maaltijden nog niet gekozen voor deze maand';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Je hebt je maaltijden nog niet gekozen</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Je maaltijden staan klaar om gekozen te worden</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Selecteer je favoriete gerechten voor deze maand</p>
+      </td>
+    </tr>
+    
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744428317/fitpreps/ptc18wwvbhvqtotr6cyf.webp" alt="Fit Preps Maaltijden" style="width:100%; height:auto; display:block;">
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hi ${name},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Je abonnement is inmiddels een week actief, maar we zien dat je nog geen maaltijden en leverdatum hebt gekozen voor deze maand.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          <strong>Geen zorgen – je hebt nog steeds de tijd!</strong>
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Je kunt je maaltijden eenvoudig selecteren en een leverdag kiezen (maandag t/m vrijdag), zolang dit binnen je abonnementsperiode valt.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD5001; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD5001; font-size:18px;">Wat moet je doen?</h3>
+          <ul style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Log in op je account</li>
+            <li style="margin-bottom:10px;">Kies je maaltijden</li>
+            <li style="margin-bottom:0;">Selecteer je gewenste leverdag</li>
+          </ul>
+        </div>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Maaltijden kiezen
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Heb je hulp nodig of vragen? Stuur ons gerust een berichtje via <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          We kijken ernaar uit om je maaltijden te bezorgen!<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD5001; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD5001; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly meal reminder email:', error);
+    throw error;
+  }
+};
+
+
+// Monthly Second chance email for customers who haven't selected meals before subscription end
+exports.monthlyMealReminderControllerSecond = async (mailOptions) => {
+  try {
+    const { to, name, lastDeliveryDate } = mailOptions;
+    const subject = 'Nog geen maaltijden gekozen? Laatste kans voor deze maand!';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laatste kans om maaltijden te kiezen</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Segoe UI', sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:660px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.07);">
+
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; text-align:center; padding:40px 30px 20px 30px;">
+        <h1 style="margin:0; font-size:28px; color:#fff; font-family:'Georgia', serif;">Laatste kans voor deze maand!</h1>
+        <p style="color:#ffe9dc; font-size:15px; margin-top:10px;">Je maandabonnement loopt bijna af</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="line-height:0;">
+        <svg viewBox="0 0 500 50" preserveAspectRatio="none" style="display:block; width:100%; height:50px;">
+          <path d="M0,0 C150,100 350,-50 500,30 L500,00 L0,0 Z" style="fill:#FD5001;"></path>
+        </svg>
+      </td>
+    </tr>
+
+    <!-- Hero Image -->
+    <tr>
+      <td>
+        <img src="https://res.cloudinary.com/dwrk5sbbb/image/upload/v1744428317/fitpreps/ptc18wwvbhvqtotr6cyf.webp" alt="Fit Preps Maaltijden" style="width:100%; display:block; height:auto;">
+      </td>
+    </tr>
+
+    <!-- Message Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.7;">Hi <strong>${name}</strong>,</p>
+
+        <p style="font-size:16px; line-height:1.7;">
+          Je maandabonnement loopt bijna af, maar we zien dat je nog geen maaltijden en leverdatum hebt gekozen.
+        </p>
+
+        <p style="font-size:16px; line-height:1.7;">
+          Geen probleem, je hebt nog een paar dagen om je bestelling te plaatsen.
+          Als je geen keuze maakt, sturen we je maaltijden automatisch op de laatst mogelijke leverdag van deze maand, 
+          met dezelfde selectie als vorige maand (indien beschikbaar).
+        </p>
+
+        <!-- Info Block -->
+        <div style="background:#fff6f2; border-left:5px solid #FD5001; padding:20px; border-radius:8px; margin:30px 0;">
+          <h3 style="margin-top:0; margin-bottom:10px; font-size:18px; color:#333;">Wat kun je nu doen?</h3>
+          <ul style="padding-left:20px; margin:0;">
+            <li style="padding:5px 0; font-size:16px;">Log in op je account</li>
+            <li style="padding:5px 0; font-size:16px;">Kies je maaltijden</li>
+            <li style="padding:5px 0; font-size:16px;">Selecteer je leverdag (maandag t/m vrijdag, vóór einde abonnementsperiode)</li>
+          </ul>
+        </div>
+
+        <p style="font-size:16px; line-height:1.7; font-weight:bold;">
+          Let op: Je hebt tot uiterlijk ${lastDeliveryDate || 'het einde van de maand'} om je keuze door te geven.
+        </p>
+      </td>
+    </tr>
+
+    <!-- CTA Button -->
+    <tr>
+      <td style="padding:0 30px 30px; text-align:center;">
+        <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
+          Kies mijn maaltijden
+        </a>
+      </td>
+    </tr>
+
+    <!-- Support Info -->
+    <tr>
+      <td style="padding:0 30px 30px; color:#555555; font-size:15px;">
+        <p style="margin:0 0 16px 0;">Vragen? Mail ons via info@fitpreps.nl – we helpen je graag verder.</p>
+        <p style="margin:0 0 16px 0;">Met gezonde groet,<br><strong>Team Fit Preps</strong></p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#999999;">
+        © 2025 Fit Preps • Alle rechten voorbehouden
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly last chance reminder:', error);
+    throw error;
+  }
+};
+
+
+
+// Monthly last day reminder - for customers who haven't selected meals and delivery is tomorrow
+exports.monthlyMealReminderControllerLast = async (mailOptions) => {
+  try {
+    const { to, name } = mailOptions;
+    const subject = 'Laatste kans: je maaltijden worden morgen geleverd';
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laatste kans: je maaltijden worden morgen geleverd</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:'Segoe UI', sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:660px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.07);">
+
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; text-align:center; padding:40px 30px 20px 30px;">
+        <h1 style="margin:0; font-size:28px; color:#fff; font-family:'Georgia', serif;">Laatste kans!</h1>
+        <p style="color:#ffe9dc; font-size:15px; margin-top:10px;">Je maaltijden worden morgen geleverd</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="line-height:0;">
+        <svg viewBox="0 0 500 50" preserveAspectRatio="none" style="display:block; width:100%; height:50px;">
+          <path d="M0,0 C150,100 350,-50 500,30 L500,00 L0,0 Z" style="fill:#FD5001;"></path>
+        </svg>
+      </td>
+    </tr>
+
+    <!-- Urgent Banner -->
+    <tr>
+      <td style="background-color:#fff1ea; border-bottom:1px solid #ffe0d0; padding:15px; text-align:center; font-weight:bold; color:#FD5001; font-size:16px;">
+        ⏰ Laatste dag om je keuze door te geven: tot vanavond 23:59
+      </td>
+    </tr>
+
+    <!-- Message Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.7;">Hi <strong>${name}</strong>,</p>
+
+        <p style="font-size:16px; line-height:1.7;">
+          Je hebt nog geen maaltijden gekozen voor deze maand, en <strong>morgen is de laatste mogelijke leverdag</strong> binnen jouw abonnement.
+        </p>
+
+        <p style="font-size:16px; line-height:1.7;">
+          Als je vandaag geen keuze maakt, zullen we je dezelfde maaltijden leveren als vorige maand, op het adres dat bij ons bekend is.
+        </p>
+
+        <!-- Info Block -->
+        <div style="background:#fff6f2; border-left:5px solid #FD5001; padding:20px; border-radius:8px; margin:30px 0;">
+          <h3 style="margin-top:0; margin-bottom:10px; font-size:18px; color:#333;">Wil je toch nog iets wijzigen?</h3>
+          <p style="font-size:16px; margin-top:0; margin-bottom:10px;">Dan heb je nog tot vandaag 23:59 om:</p>
+          <ul style="padding-left:20px; margin:0;">
+            <li style="padding:5px 0; font-size:16px;">Je maaltijden aan te passen</li>
+            <li style="padding:5px 0; font-size:16px;">Een andere leverdag te kiezen (indien beschikbaar)</li>
+          </ul>
+        </div>
+      </td>
+    </tr>
+
+    <!-- CTA Button -->
+    <tr>
+      <td style="padding:0 30px 30px; text-align:center;">
+        <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
+          Laatste wijziging maken
+        </a>
+      </td>
+    </tr>
+
+    <!-- Support Info -->
+    <tr>
+      <td style="padding:0 30px 30px; color:#555555; font-size:15px;">
+        <p style="margin:0 0 16px 0;">Heb je vragen of hulp nodig? Mail ons via <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.</p>
+        <p style="margin:0 0 16px 0;">We staan morgen voor je klaar!<br><strong>Team Fit Preps</strong></p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#999999;">
+        © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending monthly last day reminder:', error);
+    throw error;
+  }
+};
+
+exports.dailyEmailSummaryControllerOwner = async (mailOptions) => {
+  try {
+    const { to, emailStats } = mailOptions;
+    const date = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const subject = `Daily Email Summary Report - ${date}`;
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Email Summary Report</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f5; font-family:Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:660px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.07);">
+
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; text-align:center; padding:30px 20px;">
+        <h1 style="margin:0; font-size:24px; color:#fff;">Daily Email Summary Report</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">${date}</p>
+      </td>
+    </tr>
+
+    <!-- Summary Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hello,</p>
+
+        <p style="font-size:16px; line-height:1.6;">
+          Here is a summary of reminder emails sent to customers today:
+        </p>
+
+        <!-- Statistics Table -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0; border-collapse:collapse;">
+          <tr style="background-color:#f9f9f9;">
+            <th style="padding:12px 15px; text-align:left; border:1px solid #ddd;">Email Type</th>
+            <th style="padding:12px 15px; text-align:center; border:1px solid #ddd;">Count</th>
+          </tr>
+          ${Object.entries(emailStats).map(([type, count]) => `
+            <tr>
+              <td style="padding:12px 15px; border:1px solid #ddd;">${type}</td>
+              <td style="padding:12px 15px; text-align:center; border:1px solid #ddd;">${count}</td>
+            </tr>
+          `).join('')}
+          <tr style="background-color:#f0f0f0; font-weight:bold;">
+            <td style="padding:12px 15px; border:1px solid #ddd;">Total</td>
+            <td style="padding:12px 15px; text-align:center; border:1px solid #ddd;">${Object.values(emailStats).reduce((sum, count) => sum + count, 0)}</td>
+          </tr>
+        </table>
+
+        <!-- Additional Info -->
+        <div style="background-color:#f0f9f4; border-left:4px solid #FD5001; padding:20px; margin:30px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#333; font-size:18px;">Overview</h3>
+          <p style="margin:0; font-size:15px; line-height:1.6;">
+            These email reminders were automatically sent to customers based on subscription status and meal selection activity.
+            Use this information to monitor customer engagement and identify potential improvements to the reminder system.
+          </p>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color:#f1f1f1; text-align:center; padding:20px; font-size:12px; color:#666666;">
+        <p style="margin:0;">This is an automated report. Please do not reply to this email.</p>
+        <p style="margin:10px 0 0;">© ${new Date().getFullYear()} Fit Preps • All rights reserved</p>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+    `;
+    await sendEmail(to, subject, html);
+  } catch (error) {
+    console.error('Error sending daily email summary:', error);
+    throw error;
   }
 };

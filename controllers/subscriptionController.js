@@ -42,237 +42,19 @@ function findPriceByPoints(totalPoints, frequency) {
     throw new Error('No matching plan found for the given points');
 }
 
-// Configure the cron job to run at 1 AM every day
-cron.schedule("0 1 * * *", processSubscriptions);
 
-cron.schedule('0 9 * * 0', async () => {
-  // Sunday reminder email
-  try {
-    const db = getDB();
-    const today = new Date();
-    
-    // Get all active subscriptions
-    const subscriptions = await db.collection('subscriptions')
-      .find({ 
-        status: 'active',
-      })
-      .toArray();
-    
-    console.log(`Checking ${subscriptions.length} active subscriptions for Sunday reminders`);
-    
-    for (const subscription of subscriptions) {
-       if(subscription.frequency === "weekly"){
-        // Check if next payment is within the next 7 days
-        const nextPaymentDate = new Date(subscription.nextPaymentDate);
-        const daysUntilPayment = Math.ceil((nextPaymentDate - today) / (1000 * 60 * 60 * 24));
-        
-        // If payment is coming up and we should remind user
-        if (daysUntilPayment > 0 && daysUntilPayment <= 7) {
-          // Check if user has placed an order for their upcoming delivery
-          // const hasPlacedOrder = await db.collection('orders').findOne({
-          //   user_id: subscription.userId.toString(),
-           
-          //   status: { $in: ['subscription', 'completed'] }
-          // });
-          
-          // If no order has been placed, send a reminder
-          if (!subscription.mealSelected) {
-            const user = await db.collection('users').findOne({ _id: subscription.userId });
-            
-            if (user && subscription.data && subscription.data._billing_email) {
-              // Send email reminder
-              await emailQueue.add(
-                { 
-                  emailType: "sub-reminder", 
-                  mailOptions: { 
-                    to: subscription.data._billing_email,
-                    name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
-                    nextPaymentDate: subscription.nextPaymentDate,
-                    daysRemaining: daysUntilPayment,
-                    points: user.points || 0,
-                    selectMealsLink: `${process.env.FRONTEND_URI}/meals`
-                  }
-                },
-                {
-                  attempts: 3,
-                  backoff: 5000
-                }
-              );
-              
-              console.log(`Sunday reminder sent to ${subscription.data._billing_email} for subscription ${subscription._id}`);
-            }
-          }
-        }
-      } else {
-        // For monthly or other non-weekly subscriptions
-        // Check if today is the last Sunday before the next payment date
-        const nextPaymentDate = new Date(subscription.nextPaymentDate);
-        const daysUntilPayment = Math.ceil((nextPaymentDate - today) / (1000 * 60 * 60 * 24));
-        
-        // If this is the last Sunday before payment (7 days or less until payment)
-        if (daysUntilPayment > 0 && daysUntilPayment <= 7) {
-          // Check if user has placed an order for their upcoming delivery
-          // const hasPlacedOrder = await db.collection('orders').findOne({
-          //   user_id: subscription.userId.toString(),
-            
-          //   status: { $in: ['subscription', 'completed'] }
-          // });
-          
-          // If no order has been placed, send a reminder
-          if (!subscription.mealSelected) {
-            const user = await db.collection('users').findOne({ _id: subscription.userId });
-            
-            if (user && subscription.data && subscription.data._billing_email) {
-              // Send email reminder
-              await emailQueue.add(
-                { 
-                  emailType: "sub-reminder-monthly", 
-                  mailOptions: { 
-                    to: subscription.data._billing_email,
-                    name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
-                    nextPaymentDate: subscription.nextPaymentDate,
-                    daysRemaining: daysUntilPayment,
-                    points: user.points || 0,
-                    selectMealsLink: `${process.env.FRONTEND_URI}/meals`
-                  }
-                },
-                {
-                  attempts: 3,
-                  backoff: 5000
-                }
-              );
-              
-              console.log(`Sunday reminder sent to ${subscription.data._billing_email} for subscription ${subscription._id} (non-weekly)`);
-            }
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error processing Sunday reminder emails:', error);
-  }
-});
-
-cron.schedule('0 9 * * 5', async () => {
-  // Friday reminder email - last chance reminder
-  try {
-    const db = getDB();
-    const today = new Date();
-    
-    // Get all active subscriptions
-    const subscriptions = await db.collection('subscriptions')
-      .find({ 
-        status: 'active',
-      })
-      .toArray();
-    
-    console.log(`Checking ${subscriptions.length} active subscriptions for Friday reminders`);
-    
-    for (const subscription of subscriptions) {
-      if(subscription.frequency === "weekly"){  
-        const nextPaymentDate = new Date(subscription.nextPaymentDate);
-        const daysUntilPayment = Math.ceil((nextPaymentDate - today) / (1000 * 60 * 60 * 24));
-        
-        // If payment is very close and we should urgently remind user
-        if (daysUntilPayment > 0 && daysUntilPayment <= 3) {
-          // Check if user has placed an order for their upcoming delivery
-          // const hasPlacedOrder = await db.collection('orders').findOne({
-          //   user_id: subscription.userId.toString(),
-            
-          //   status: { $in: ['subscription', 'completed'] }
-          // });
-          
-          // If no order has been placed, send an urgent reminder
-          if (!subscription.mealSelected) {
-            const user = await db.collection('users').findOne({ _id: subscription.userId });
-            
-            if (user && subscription.data && subscription.data._billing_email) {
-              // Send urgent email reminder
-              await emailQueue.add(
-                { 
-                  emailType: "sub-reminder", 
-                  mailOptions: { 
-                    to: subscription.data._billing_email,
-                    name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
-                    nextPaymentDate: subscription.nextPaymentDate,
-                    daysRemaining: daysUntilPayment,
-                    points: user.points || 0,
-                    selectMealsLink: `${process.env.FRONTEND_URI}/meals`
-                  }
-                },
-                {
-                  attempts: 3,
-                  backoff: 5000
-                }
-              );
-              
-              console.log(`Friday urgent reminder sent to ${subscription.data._billing_email} for subscription ${subscription._id}`);
-            }
-          }
-        }
-      } else {
-        // For monthly or other non-weekly subscriptions
-        // Check if today is the first Friday after the last payment date
-        const lastPaymentDate = new Date(subscription.lastPaymentDate);
-        const daysSinceLastPayment = Math.ceil((today - lastPaymentDate) / (1000 * 60 * 60 * 24));
-        
-        // If this is the first Friday after payment (between 1-7 days after payment)
-        if (daysSinceLastPayment > 0 && daysSinceLastPayment <= 7) {
-          // Check if user has placed an order since their last payment
-          // const hasPlacedOrder = await db.collection('orders').findOne({
-          //   user_id: subscription.userId.toString(),
-          
-          //   status: { $in: ['subscription', 'completed'] }
-          // });
-          
-          // If no order has been placed, send a reminder
-          if (!subscription.mealSelected) {
-            const user = await db.collection('users').findOne({ _id: subscription.userId });
-            
-            if (user && subscription.data && subscription.data._billing_email) {
-              // Send email reminder
-              await emailQueue.add(
-                { 
-                  emailType: "sub-reminder-monthly", 
-                  mailOptions: { 
-                    to: subscription.data._billing_email,
-                    name: `${subscription.data._billing_first_name || ''} ${subscription.data._billing_last_name || ''}`.trim(),
-                    lastPaymentDate: subscription.lastPaymentDate,
-                    nextPaymentDate: subscription.nextPaymentDate,
-                    points: user.points || 0,
-                    selectMealsLink: `${process.env.FRONTEND_URI}/meals`
-                  }
-                },
-                {
-                  attempts: 3,
-                  backoff: 5000
-                }
-              );
-              
-              console.log(`First Friday reminder sent to ${subscription.data._billing_email} for subscription ${subscription._id} (non-weekly)`);
-            }
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error processing Friday reminder emails:', error);
-  }
-});
 
 function calculateNextDate(dateString, frequency) {
-  const date = new Date(dateString);
+  const date = DateTime.fromISO(dateString, { zone: 'Europe/Amsterdam' });
   
   if (frequency === 'daily') {
-    date.setDate(date.getDate() + 1);
+    return date.plus({ days: 1 }).toISODate();
   } else if (frequency === 'weekly') {
-    date.setDate(date.getDate() + 7);
+    return date.plus({ days: 7 }).toISODate();
   } else {
     // Default to monthly
-    date.setMonth(date.getMonth() + 1);
+    return date.plus({ months: 1 }).toISODate();
   }
-  
-  return date.toISOString().split('T')[0];
 }
 
 function calculateNextDateOfBillingMonday(dateString, frequency) {
@@ -328,13 +110,17 @@ function calculateNextDateOfBilling(dateString, frequency) {
   // fallback
   return date.toISODate();
 }
-
+// Configure the cron job to run at 1 AM every day
+cron.schedule("0 1 * * *", processSubscriptions,{
+  timezone: "Europe/Amsterdam"
+});
 /**
  * Main function to process all subscription-related tasks
  */
+
 async function processSubscriptions() {
   try {
-    const today = new Date().toISOString().split("T")[0];
+    const today = DateTime.now().setZone('Europe/Amsterdam').toISODate();
     console.log(`Processing subscriptions for date: ${today}`);
     
     // Process payments first
@@ -342,11 +128,213 @@ async function processSubscriptions() {
     
     // Then process deliveries
     await processPointDeliveries(today);
-    
+    //Process Reminders
+    await processMonthlyReminders(today);
   } catch (error) {
     console.error(`Error in subscription processing: ${error.message}`);
   }
 }
+async function processMonthlyReminders(today){
+  try {
+    const db = getDB();
+    const subscriptions = await db.collection('subscriptions')
+      .find({ 
+        status: 'active',
+        mealSelected:false,
+        frequency:"monthly"
+      })
+      .toArray();
+      const emailSummary ={
+        to: "info@fitpreps.nl",
+        emailStats: {
+          "Monthly Friday Meal Reminder": subscriptions.length,
+          
+        }
+      }
+      const emailSummary2 ={
+        to: "siyamrh7@gmail.com",
+        emailStats: {
+          "Monthly Meal Reminder": subscriptions.length,
+          
+        }
+      }
+      await emailQueue.add({ emailType: "sub-daily-summary-owner", mailOptions: emailSummary }, {
+        attempts: 3, // Retry up to 3 times in case of failure
+        backoff: 5000, // Retry with a delay of 5 seconds
+      });
+      await emailQueue.add({ emailType: "sub-daily-summary-owner", mailOptions: emailSummary2 }, {
+        attempts: 3, // Retry up to 3 times in case of failure
+        backoff: 5000, // Retry with a delay of 5 seconds
+      });
+    for (const subscription of subscriptions) {
+
+      //check if the subscription.lastPlanEndDate is 7 days after today
+      const lastPlanEndDate = DateTime.fromISO(subscription.lastPlanEndDate, { zone: 'Europe/Amsterdam' });
+      const sevenDaysAfter = lastPlanEndDate.plus({ days: 7 });
+
+      if (sevenDaysAfter.toISODate() === today) {
+        //send reminder email
+        await emailQueue.add({ emailType: "sub-monthly-reminder-first", mailOptions: { to: subscription.data._billing_email,
+          
+          name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } }, {
+            attempts: 3, // Retry up to 3 times in case of failure
+            backoff: 10000, // Retry with a delay of 5 seconds
+          }
+        );
+      }
+      //check if the subscription.nextPaymentDate is 7 days before today
+      const nextPaymentDate = DateTime.fromISO(subscription.nextPaymentDate, { zone: 'Europe/Amsterdam' });
+      const sevenDaysBefore = nextPaymentDate.minus({ days: 7 });
+
+      if (sevenDaysBefore.toISODate() === today) {
+        //send reminder email
+        await emailQueue.add({ emailType: "sub-monthly-reminder-second", mailOptions: { to: subscription.data._billing_email,
+          
+          name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name,lastDeliveryDate:subscription.nextPaymentDate  } }, {
+            attempts: 3, // Retry up to 3 times in case of failure
+            backoff: 10000, // Retry with a delay of 5 seconds
+          }
+        );
+      }
+      //check if the subscription.nextPaymentDate is 1 day before today
+      const oneDayBefore = nextPaymentDate.minus({ days: 1 });
+
+      if (oneDayBefore.toISODate() === today) {
+        //send reminder email
+        await emailQueue.add({ emailType: "sub-monthly-reminder-last", mailOptions: { to: subscription.data._billing_email,
+          
+          name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } }, {
+            attempts: 3, // Retry up to 3 times in case of failure
+            backoff: 10000, // Retry with a delay of 5 seconds
+          }
+        );
+      }
+
+
+    }
+  } catch (error) {
+    console.error(`Error in monthly reminders processing: ${error.message}`);
+  }
+}
+cron.schedule('0 9 * * 0', async () => {
+  // Sunday reminder email
+  try {
+    const db = getDB();
+    
+    // Get all active subscriptions
+    const subscriptions = await db.collection('subscriptions')
+      .find({ 
+        status: 'active',
+        mealSelected:false,
+        frequency:"weekly"
+      })
+      .toArray();
+    
+      const emailSummary ={
+        to: "info@fitpreps.nl",
+        emailStats: {
+          "Weekly Sunday Meal Reminder": subscriptions.length,
+          
+        }
+      }
+      const emailSummary2 ={
+        to: "siyamrh7@gmail.com",
+        emailStats: {
+          "Weekly Sunday Meal Reminder": subscriptions.length,
+          
+        }
+      }
+      await emailQueue.add({ emailType: "sub-daily-summary-owner", mailOptions: emailSummary }, {
+        attempts: 3, // Retry up to 3 times in case of failure
+        backoff: 5000, // Retry with a delay of 5 seconds
+      });
+      await emailQueue.add({ emailType: "sub-daily-summary-owner", mailOptions: emailSummary2 }, {
+        attempts: 3, // Retry up to 3 times in case of failure
+        backoff: 5000, // Retry with a delay of 5 seconds
+      });    
+    for (const subscription of subscriptions) {
+      setImmediate(async () =>
+        await emailQueue.add(
+          { emailType: "sub-sunday-reminder", mailOptions: { to: subscription.data._billing_email,
+            
+            name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
+
+          {
+            attempts: 3, // Retry up to 3 times in case of failure
+            backoff: 10000, // Retry with a delay of 5 seconds
+          }
+        )
+      );
+          
+        
+  
+    }
+  } catch (error) {
+    console.error('Error processing Sunday reminder emails:', error);
+  }
+},{
+  timezone: "Europe/Amsterdam"
+});
+
+cron.schedule('0 9 * * 5', async () => {
+  // Friday reminder email 
+  try {
+    const db = getDB();
+    
+    // Get all active subscriptions
+    const subscriptions = await db.collection('subscriptions')
+      .find({ 
+        status: 'active',
+        mealSelected:false,
+        frequency:"weekly"
+      })
+      .toArray();
+    
+    const emailSummary ={
+      to: "info@fitpreps.nl",
+      emailStats: {
+        "Weekly Friday Meal Reminder": subscriptions.length,
+        
+      }
+    }
+    const emailSummary2 ={
+      to: "siyamrh7@gmail.com",
+      emailStats: {
+        "Weekly Friday Meal Reminder": subscriptions.length,
+        
+      }
+    }
+    await emailQueue.add({ emailType: "sub-daily-summary-owner", mailOptions: emailSummary }, {
+      attempts: 3, // Retry up to 3 times in case of failure
+      backoff: 5000, // Retry with a delay of 5 seconds
+    });
+    await emailQueue.add({ emailType: "sub-daily-summary-owner", mailOptions: emailSummary2 }, {
+      attempts: 3, // Retry up to 3 times in case of failure
+      backoff: 5000, // Retry with a delay of 5 seconds
+    });
+    for (const subscription of subscriptions) {
+      
+      
+        setImmediate(async () =>
+          await emailQueue.add(
+            { emailType: "sub-friday-reminder", mailOptions: { to: subscription.data._billing_email,
+              
+              name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
+  
+            {
+              attempts: 3, // Retry up to 3 times in case of failure
+              backoff: 10000, // Retry with a delay of 5 seconds
+            }
+          )
+        );
+    }
+  } catch (error) {
+    console.error('Error processing Friday reminder emails:', error);
+  }
+},{
+  timezone: "Europe/Amsterdam"
+});
+
 
 /**
  * Process point deliveries for active subscriptions
@@ -382,7 +370,7 @@ async function processPointDeliveries(date) {
         pointsUsed: parseInt(sub.pointsUsed),
         metadata: {...sub.data,_delivery_date:date,_payment_method_title : "Subscription",_delivery_company:"trunkrs"}, // Convert the paymentData.data,
         deliveryDate: date,
-        createdAt: new Date().toISOString(),
+        createdAt: DateTime.now().setZone('Europe/Amsterdam').toISO(),
         status: 'subscription',
         total:(parseFloat(sub.pointsUsed)/10).toFixed(2).toString()
       });
@@ -457,7 +445,7 @@ async function processPointDeliveries(date) {
             userId: sub.userId,
             orderId: orderResult.insertedId,
             error: errorText,
-            timestamp: new Date()
+            timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
           });
         } else {
           const sendCloudResponse = await response.json();
@@ -485,34 +473,19 @@ async function processPointDeliveries(date) {
           userId: sub.userId,
           orderId: orderResult.insertedId,
           error: sendCloudError.message,
-          timestamp: new Date()
+          timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
         });
       }
    
-      // Reset points used counter for new cycle
-      // await db.collection("subscriptions").updateOne(
-      //   { _id: sub._id },
-      //   { 
-      //     $set: { pointsUsed: 0 },
-      //     $push: { 
-      //       deliveryHistory: {
-      //         date: new Date(),
-      //         pointsDelivered: pointsToAdd
-      //       } 
-      //     }
-      //   }
-      // );
-      
       // Calculate next delivery date based on frequency
       const nextDeliveryDate = calculateNextDate(date, sub.frequency);
       
       // Update subscription with next delivery date
-      // TESTING CHANGE START
       await db.collection("subscriptions").updateOne(
         { _id: sub._id },
         { $set: { deliveryDate: nextDeliveryDate } }
       );
-      // TESTING CHANGE END
+      
       if(sub.pendingCancellationConfirmed){
         await db.collection('subscriptions').updateOne(
           { _id: sub._id },
@@ -529,7 +502,7 @@ async function processPointDeliveries(date) {
         subscriptionId: sub._id,
         userId: sub.userId,
         error: error.message,
-        timestamp: new Date()
+        timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
       });
     }
   }
@@ -569,21 +542,23 @@ async function processSubscriptionPayments(date) {
         }
       });
       
+      const now = DateTime.now().setZone('Europe/Amsterdam');
+      
       // Update subscription with payment information
       await db.collection("subscriptions").updateOne(
         { _id: sub._id },
         { 
           $set: { 
             currentPaymentId: payment.id,
-            lastPaymentAttemptDate: new Date(),
-            updatedAt: new Date(),
+            lastPaymentAttemptDate: now.toJSDate(),
+            updatedAt: now.toJSDate(),
             paymentStatus:"paid"
           },
           $push: { 
             paymentHistory: {
               paymentId: payment.id,
               amount: parseFloat(sub.amountPerCycle),
-              date: new Date(),
+              date: now.toJSDate(),
               status: payment.status,
               type: 'recurring-payment'
             } 
@@ -591,40 +566,51 @@ async function processSubscriptionPayments(date) {
         }
       );
          const nextPaymentDate = calculateNextDate(
-        sub.nextPaymentDate || new Date().toISOString().split('T')[0],
+        sub.nextPaymentDate || now.toISODate(),
         sub.frequency
       );
      
       // Update next payment date in sub 
-      //TESTING CHANGE START
       await db.collection('subscriptions').updateOne(
         { _id: sub._id },
-        { $set: { nextPaymentDate: nextPaymentDate ,mealSelected:false,  lastPlanEndDate:sub.nextPaymentDate,planEndDate:nextPaymentDate        } }
+        { $set: { nextPaymentDate: nextPaymentDate, mealSelected:false, lastPlanEndDate:sub.nextPaymentDate, planEndDate:nextPaymentDate } }
       );
-      //TESTING CHANGE END
+      
       await db.collection('users').updateOne(
         { _id: new ObjectId(sub.userId) },
         { $inc: { points: parseInt(sub.pointsPerCycle) } }
       );
+
       if(sub.pendingCancellation){
         await db.collection('subscriptions').updateOne(
           { _id: sub._id },
           { $set: { pendingCancellationConfirmed: true } }
         );
       }
+      setImmediate(async () =>
+        await emailQueue.add(
+          { emailType: sub.frequency == "weekly" ? "sub-renewal-weekly" : "sub-renewal-monthly", mailOptions: { to: sub.data._billing_email,
+            
+            name:sub.data._billing_first_name+" "+sub.data._billing_last_name  } },
+
+          {
+            attempts: 3, // Retry up to 3 times in case of failure
+            backoff: 5000, // Retry with a delay of 5 seconds
+          }
+        )
+      );
       
       console.log(`Payment created for sub ${sub._id}: ${payment.id}`);
     } catch (error) {
       console.error(`Error processing payment for subscription ${sub._id}: ${error.message}`);
       
       // Update subscription status if payment fails multiple times
-      const sub = await db.collection("subscriptions").findOne({ _id: sub._id });
-      const failedPayments = (sub.paymentHistory || [])
+      const subscription = await db.collection("subscriptions").findOne({ _id: sub._id });
+      const failedPayments = (subscription.paymentHistory || [])
         .filter(p => p.status === 'failed')
         .filter(p => {
-          const paymentDate = new Date(p.date);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const paymentDate = DateTime.fromJSDate(p.date).setZone('Europe/Amsterdam');
+          const thirtyDaysAgo = DateTime.now().setZone('Europe/Amsterdam').minus({ days: 30 });
           return paymentDate > thirtyDaysAgo;
         });
         
@@ -644,7 +630,7 @@ async function processSubscriptionPayments(date) {
         subscriptionId: sub._id,
         userId: sub.userId,
         error: error.message,
-        timestamp: new Date()
+        timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
       });
     }
   }
@@ -767,7 +753,7 @@ exports.purchasePoints = async (req, res) => {
       
     });
     
-    const today = new Date();
+    const now = DateTime.now().setZone('Europe/Amsterdam');
     
     // Create subscription or update existing one
     if (existingSubscription) {
@@ -786,11 +772,11 @@ exports.purchasePoints = async (req, res) => {
             amountPerCycle: parseFloat(amount),
             frequency: frequency,
             // paymentStatus: payment.status,
-            updatedAt: today,
+            updatedAt: now.toJSDate(),
             currentPaymentId: payment.id,
             data: data || existingSubscription.data,
             nextPaymentDate: calculateNextDate(existingSubscription.nextPaymentDate, frequency),
-            lastPaymentDate: today.toISOString().split('T')[0],
+            lastPaymentDate: now.toISODate(),
             // deliveryDate: null,
             mealSelected:false,
             lastPlanEndDate:existingSubscription.planEndDate,
@@ -800,7 +786,7 @@ exports.purchasePoints = async (req, res) => {
             paymentHistory: {
               paymentId: payment.id,
               amount: parseFloat(amount),
-              date: today,
+              date: now.toJSDate(),
               status: payment.status,
               type: 'modification'
             }
@@ -821,9 +807,6 @@ exports.purchasePoints = async (req, res) => {
       });
     } else {
       // Calculate the initial delivery date and next payment date
-      // const startDate = new Date();
-      // const deliveryDate = calculateNextDate(startDate.toISOString().split('T')[0], frequency);
-      // const nextPaymentDate = calculateNextDate(startDate.toISOString().split('T')[0], frequency);
       const nextPaymentDate = calculateNextDateOfBilling(startDate, frequency);
 
       await getDB().collection('subscriptions').insertOne({
@@ -835,17 +818,13 @@ exports.purchasePoints = async (req, res) => {
         frequency: frequency,
         status: 'inactive',
         paymentStatus: "pending",
-        createdAt: today,
-        updatedAt: today,
+        createdAt: now.toJSDate(),
+        updatedAt: now.toJSDate(),
         startDate: startDate,
         mealSelected:false,
-         deliveryDate: null,
-        //TESTING START
+        deliveryDate: null,
         nextPaymentDate: frequency === "weekly" ? startDate : nextPaymentDate,
-        //  nextPaymentDate: today.toISOString().split('T')[0],
-      
-        //TESTING END
-        lastPaymentDate: today.toISOString().split('T')[0],
+        lastPaymentDate: now.toISODate(),
         currentPaymentId: payment.id,
         lastPlanEndDate:startDate,
         planEndDate:nextPaymentDate,
@@ -853,7 +832,7 @@ exports.purchasePoints = async (req, res) => {
         paymentHistory: [{
           paymentId: payment.id,
           amount: parseFloat(amount),
-          date: today,
+          date: now.toJSDate(),
           status: payment.status,
           type: 'initial'
         }],
@@ -864,8 +843,6 @@ exports.purchasePoints = async (req, res) => {
         checkoutUrl: payment.getCheckoutUrl()
       });
     }
-    
-    // Return checkout URL to frontend
     
   } catch (error) {
     console.error('Error creating payment:', error);
@@ -897,41 +874,11 @@ exports.firstPaymentWebhook = async (req, res) => {
     
     const { userId, pointsToAdd, frequency, type, existingSubscriptionId, isModification } = payment.metadata;
     const db = getDB();
+    const now = DateTime.now().setZone('Europe/Amsterdam');
     
     if (payment.status == 'paid') {
       if (isModification && existingSubscriptionId) {
         // This is a modification to an existing subscription
-        // const subscription = await db.collection('subscriptions').findOne({ 
-        //   currentPaymentId: paymentId 
-        // });
-        // await db.collection('subscriptions').updateOne(
-        //   { _id: new ObjectId(existingSubscriptionId) },
-        //   { 
-        //     $set: { 
-        //       paymentStatus: 'paid',
-        //       updatedAt: new Date()
-        //     }
-        //   }
-        // );
-        
-        // // Add the new points to the user's account
-        // await db.collection('users').updateOne(
-        //   { _id: new ObjectId(userId) },
-        //   { $inc: { points: parseInt(pointsToAdd) } }
-        // );
-        // setImmediate(async () =>
-        //   await emailQueue.add(
-        //     { emailType: "sub-confirmation", mailOptions: { to: subscription.data._billing_email,profile:process.env.FRONTEND_URI+"/profile",
-              
-        //       name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
-
-        //     {
-        //       attempts: 3, // Retry up to 3 times in case of failure
-        //       backoff: 5000, // Retry with a delay of 5 seconds
-        //     }
-        //   )
-        // );
-     
         console.log(`Subscription ${existingSubscriptionId} modified and ${pointsToAdd} points added to user ${userId}`);
       } 
       else if (type === 'points-subscription-setup') {
@@ -962,13 +909,13 @@ exports.firstPaymentWebhook = async (req, res) => {
           { 
             $set: { 
               paymentStatus: 'paid',
-              updatedAt: new Date()      
+              updatedAt: now.toJSDate()      
             },
             $push: {
               paymentHistory: {
                 paymentId: paymentId,
                 status: 'paid',
-                date: new Date(),
+                date: now.toJSDate(),
                 amount: subscription.amountPerCycle,
                 type: 'initial-payment-confirmation'
               }
@@ -1021,13 +968,13 @@ exports.firstPaymentWebhook = async (req, res) => {
         { 
           $set: { 
             paymentStatus: payment.status,
-            updatedAt: new Date() 
+            updatedAt: now.toJSDate() 
           },
           $push: {
             paymentHistory: {
               paymentId: paymentId,
               status: payment.status,
-              date: new Date(),
+              date: now.toJSDate(),
               type: 'payment-failure'
             }
           }
@@ -1121,9 +1068,8 @@ exports.paymentWebhook = async (req, res) => {
       const failedPayments = subscription.paymentHistory
         .filter(p => p.status === 'failed' || p.status === 'canceled' || p.status === 'expired')
         .filter(p => {
-          const paymentDate = new Date(p.date);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const paymentDate = DateTime.fromJSDate(p.date).setZone('Europe/Amsterdam');
+          const thirtyDaysAgo = DateTime.now().setZone('Europe/Amsterdam').minus({ days: 30 });
           return paymentDate > thirtyDaysAgo;
         });
       
@@ -1136,16 +1082,16 @@ exports.paymentWebhook = async (req, res) => {
         
         console.log(`Subscription ${subscription._id} marked as payment-failed due to multiple failed attempts`);
       } else {
-        // Retry payment in 3 days
-        const retryDate = new Date();
-        retryDate.setDate(retryDate.getDate() + 1);
+        // Retry payment in 1 day
+        const now = DateTime.now().setZone('Europe/Amsterdam');
+        const retryDate = now.plus({ days: 1 });
         
         await db.collection('subscriptions').updateOne(
           { _id: subscription._id },
-          { $set: { nextPaymentDate: retryDate.toISOString().split('T')[0] } }
+          { $set: { nextPaymentDate: retryDate.toISODate() } }
         );
         
-        console.log(`Payment ${paymentId} failed for subscription ${subscription._id}; retry scheduled for ${retryDate.toISOString().split('T')[0]}`);
+        console.log(`Payment ${paymentId} failed for subscription ${subscription._id}; retry scheduled for ${retryDate.toISODate()}`);
       }
     }
     
@@ -1308,20 +1254,20 @@ exports.startSubscription = async (req, res) => {
     
     if (deductUserPoints.modifiedCount > 0) {
       // Calculate delivery and payment dates
-      const parsedStartDate = new Date(startDate);
+      const date = DateTime.fromISO(startDate, { zone: 'Europe/Amsterdam' });
       
       // Calculate the next delivery date based on the interval
       let deliveryDate;
       if (paymentData.frequency === 'daily') {
-        deliveryDate = new Date(parsedStartDate.setDate(parsedStartDate.getDate() + 1));
+        deliveryDate = date.plus({ days: 1 });
       } else if (paymentData.frequency === 'weekly') {
-        deliveryDate = new Date(parsedStartDate.setDate(parsedStartDate.getDate() + 7));
+        deliveryDate = date.plus({ days: 7 });
       } else {
-        deliveryDate = new Date(parsedStartDate.setMonth(parsedStartDate.getMonth() + 1));
+        deliveryDate = date.plus({ months: 1 });
       }
       
       // Format the date for database
-      const formattedDeliveryDate = deliveryDate.toISOString().split('T')[0];
+      const formattedDeliveryDate = deliveryDate.toISODate();
       
       // Update subscription with start date, points used, and set status to active
       await getDB().collection('subscriptions').updateOne(
@@ -1330,12 +1276,7 @@ exports.startSubscription = async (req, res) => {
         },
         { 
           $set: { 
-            // startDate,
-            //TESTING CHANGE START
             deliveryDate: paymentData.frequency === "weekly" ? formattedDeliveryDate : calculateNextDate(paymentData.nextPaymentDate, paymentData.frequency),
-            //  deliveryDate: startDate,
-
-            //TESTING CHANGE END
             mealSelected: true,
             status: 'active',
             items,
@@ -1345,7 +1286,7 @@ exports.startSubscription = async (req, res) => {
             activity: {
               type: 'subscription_started',
               pointsUsed: parseInt(pointsUsed),
-              date: new Date(),
+              date: DateTime.now().setZone('Europe/Amsterdam').toJSDate(),
               items: items,
               deliveryDate: startDate
             }
@@ -1354,14 +1295,14 @@ exports.startSubscription = async (req, res) => {
       );
       
       // Create initial order
-     const orderResult = await getDB().collection("orders").insertOne({
+      const orderResult = await getDB().collection("orders").insertOne({
         user_id: userId,
         subscriptionId: paymentData._id,
         items: items,
         pointsUsed: parseInt(pointsUsed),
         metadata: {...paymentData.data,_delivery_date:startDate,_payment_method_title : "Subscription",_delivery_company:"trunkrs"}, // Convert the paymentData.data,
         deliveryDate: startDate,
-        createdAt: new Date().toISOString(),
+        createdAt: DateTime.now().setZone('Europe/Amsterdam').toISO(),
         status: 'subscription',
         total:parseFloat(pointsUsed/10).toString()
       });
@@ -1425,44 +1366,44 @@ exports.startSubscription = async (req, res) => {
         // Log response
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`SendCloud API error for subscription ${sub._id}: ${errorText}`);
+          console.error(`SendCloud API error for subscription ${paymentData._id}: ${errorText}`);
           
           // Log error to database
-          await db.collection("errors").insertOne({
+          await getDB().collection("errors").insertOne({
             type: "sendCloudError",
-            subscriptionId: sub._id,
-            userId: sub.userId,
+            subscriptionId: paymentData._id,
+            userId: userId,
             orderId: orderResult.insertedId,
             error: errorText,
-            timestamp: new Date()
+            timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
           });
         } else {
-          // const sendCloudResponse = await response.json();
-          // console.log(`SendCloud parcel created for subscription order: ${orderResult.insertedId}`);
+          const sendCloudResponse = await response.json();
+          console.log(`SendCloud parcel created for subscription order: ${orderResult.insertedId}`);
           
           // Update order with SendCloud tracking info
-          // await getDB().collection("orders").updateOne(
-          //   { _id: orderResult.insertedId },
-          //   { 
-          //     $set: { 
-          //       sendcloud_parcel_id: sendCloudResponse.parcel.id,
-          //       tracking_number: sendCloudResponse.parcel.tracking_number || null,
-          //       tracking_url: sendCloudResponse.parcel.tracking_url || null
-          //     }
-          //   }
-          // );
+          await getDB().collection("orders").updateOne(
+            { _id: orderResult.insertedId },
+            { 
+              $set: { 
+                sendcloud_parcel_id: sendCloudResponse.parcel.id,
+                tracking_number: sendCloudResponse.parcel.tracking_number || null,
+                tracking_url: sendCloudResponse.parcel.tracking_url || null
+              }
+            }
+          );
         }
       } catch (sendCloudError) {
-        console.error(`SendCloud integration error for subscription ${sub._id}: ${sendCloudError.message}`);
+        console.error(`SendCloud integration error for subscription ${paymentData._id}: ${sendCloudError.message}`);
         
         // Log error to database
-        await db.collection("errors").insertOne({
+        await getDB().collection("errors").insertOne({
           type: "sendCloudIntegrationError",
-          subscriptionId: sub._id,
-          userId: sub.userId,
+          subscriptionId: paymentData._id,
+          userId: userId,
           orderId: orderResult.insertedId,
           error: sendCloudError.message,
-          timestamp: new Date()
+          timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
         });
       }
       setImmediate(async () =>
@@ -1478,7 +1419,7 @@ exports.startSubscription = async (req, res) => {
         )
       );
       if(paymentData.pendingCancellationConfirmed){
-        await db.collection('subscriptions').updateOne(
+        await getDB().collection('subscriptions').updateOne(
           { _id: paymentData._id },
           { $set: { status: 'cancelled' } }
         );
@@ -1666,7 +1607,7 @@ exports.deleteSubscriptions = async (req, res) => {
  */
 exports.resumeSubscription = async (req, res) => {
   try {
-    const { subscriptionId ,resumeDate} = req.body;
+    const { subscriptionId, resumeDate } = req.body;
     
     if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
       return res.status(400).json({
@@ -1709,28 +1650,30 @@ exports.resumeSubscription = async (req, res) => {
       description: `Purchase ${subscription.pointsPerCycle} points and ${subscription ? 'modify' : 'start'} subscription`,
       redirectUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`,
       webhookUrl: `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
-      sequenceType:  'recurring' , // First or recurring based on existing subscription
+      sequenceType: 'recurring',
       metadata: paymentMetadata
     });
     
-    const today = new Date();
+    const now = DateTime.now().setZone('Europe/Amsterdam');
+    const resumeDateFormatted = resumeDate ? resumeDate : now.toISODate();
     
-    // Create subscription or update existing one
+    // Update existing subscription
     if (subscription) {
       await getDB().collection('users').updateOne(
         {_id: new ObjectId(userId)},
         {
           $set: {
-          
-          currentPaymentId: payment.id,
+            currentPaymentId: payment.id,
+          }
         }
-      }
-      )
+      );
+      
       await getDB().collection('users').updateOne(
         { _id: new ObjectId(userId) },
         { $inc: { points: parseInt(subscription.pointsPerCycle) } }
       );
-      const nextPaymentDate = calculateNextDateOfBilling(resumeDate ||today.toISOString().split('T')[0], subscription.frequency);
+      
+      const nextPaymentDate = calculateNextDateOfBilling(resumeDateFormatted, subscription.frequency);
 
       await getDB().collection('subscriptions').updateOne(
         { _id: new ObjectId(subscription._id) },
@@ -1738,28 +1681,26 @@ exports.resumeSubscription = async (req, res) => {
           $set: {
             status: 'active',
             paymentStatus: 'paid',
-            updatedAt: today,
+            updatedAt: now.toJSDate(),
             currentPaymentId: payment.id,
             data: subscription.data,
-            nextPaymentDate: subscription.frequency === "weekly" ? resumeDate  : nextPaymentDate,
-            lastPaymentDate: today.toISOString().split('T')[0],
-            deliveryDate:null,
-            planEndDate:nextPaymentDate,
-            lastPlanEndDate:resumeDate
+            nextPaymentDate: subscription.frequency === "weekly" ? resumeDateFormatted : nextPaymentDate,
+            lastPaymentDate: now.toISODate(),
+            deliveryDate: null,
+            planEndDate: nextPaymentDate,
+            lastPlanEndDate: resumeDateFormatted
           },
           $push: {
             paymentHistory: {
               paymentId: payment.id,
               amount: parseFloat(subscription.amountPerCycle),
-              date: today,
+              date: now.toJSDate(),
               status: payment.status,
               type: 'modification'
             },
             activity: {
               type: 'subscription_resumed',
-              date: new Date(),
-              // newDeliveryDate: deliveryDate,
-              // newPaymentDate: paymentDate
+              date: now.toJSDate()
             }
           }
         }
@@ -1769,47 +1710,7 @@ exports.resumeSubscription = async (req, res) => {
         success: true,
         checkoutUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?paymentStatus=paid`,
       });
-    } 
-    // Calculate new delivery and payment dates
-   
-    // const deliveryDate = calculateNextDate(today.toISOString().split('T')[0], subscription.frequency);
-    // const todayISO = today.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-    // let paymentDate;
-    
-    // if (subscription.nextPaymentDate <= todayISO) {
-    //   paymentDate = subscription.nextPaymentDate;
-    // } else {
-    //   paymentDate = calculateNextDateOfBilling(todayISO, subscription.frequency);
-    // }
-    
-    // // Update subscription status
-    // await getDB().collection('subscriptions').updateOne(
-    //   { _id: new ObjectId(subscriptionId) },
-    //   { 
-    //     $set: { 
-    //       status: 'inactive',
-    //       deliveryDate: deliveryDate,
-    //       nextPaymentDate: paymentDate,
-    //       resumedAt: new Date()
-    //     },
-    //     $push: {
-    //       activity: {
-    //         type: 'subscription_resumed',
-    //         date: new Date(),
-    //         newDeliveryDate: deliveryDate,
-    //         newPaymentDate: paymentDate
-    //       }
-    //     }
-    //   }
-    // );
-    
-    // return res.status(200).json({
-    //   success: true,
-    //   message: 'Subscription resumed successfully',
-    //   nextDelivery: deliveryDate,
-    //   nextPayment: paymentDate
-    // });
+    }
   } catch (error) {
     console.error('Error resuming subscription:', error);
     return res.status(500).json({
@@ -1844,21 +1745,23 @@ exports.pauseSubscription = async (req, res) => {
       });
     }
     
+    const now = DateTime.now().setZone('Europe/Amsterdam');
+    
     // Update subscription status
     await getDB().collection('subscriptions').updateOne(
       { _id: new ObjectId(subscriptionId) },
       { 
         $set: { 
           status: 'paused',
-          pausedAt: new Date(),   
+          pausedAt: now.toJSDate(),   
           scheduledResumeDate: resumeDate || null,
           pauseReason: reason || 'User requested pause',
-          mealSelected:false
+          mealSelected: false
         },
         $push: {
           activity: {
             type: 'subscription_paused',
-            date: new Date(),
+            date: now.toJSDate(),
             reason: reason || 'User requested pause',
             resumeDate: resumeDate || null
           }
@@ -1867,9 +1770,9 @@ exports.pauseSubscription = async (req, res) => {
     );
     setImmediate(async () =>
       await emailQueue.add(
-        { emailType: "sub-pause", mailOptions: { to: subscription.data._billing_email,ResumeLink:process.env.FRONTEND_URI+"/profile",
+        { emailType: "sub-pause", mailOptions: { to: subscription.data._billing_email, ResumeLink: process.env.FRONTEND_URI+"/profile",
           
-          name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
+          name: subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
 
         {
           attempts: 3, // Retry up to 3 times in case of failure
@@ -1918,7 +1821,7 @@ exports.cancelSubscription = async (req, res) => {
       });
     }
     
-    const user = await getDB().collection('users').findOne({ _id: subscription.userId });
+    const now = DateTime.now().setZone('Europe/Amsterdam');
     
     // Instead of cancelling immediately, mark it for cancellation after next payment date
     await getDB().collection('subscriptions').updateOne(
@@ -1928,14 +1831,14 @@ exports.cancelSubscription = async (req, res) => {
           status: 'active', // Keep it active
           pendingCancellation: true, // Add a flag to indicate pending cancellation
           scheduledCancellationDate: subscription.nextPaymentDate,
-          cancellationRequested: new Date(),
+          cancellationRequested: now.toJSDate(),
           cancelReason: reason || 'User requested cancellation',
-          mealSelected:false
+          mealSelected: false
         },
         $push: {
           activity: {
             type: 'subscription_cancellation_scheduled',
-            date: new Date(),
+            date: now.toJSDate(),
             scheduledDate: subscription.nextPaymentDate,
             reason: reason || 'User requested cancellation'
           }
@@ -1946,7 +1849,7 @@ exports.cancelSubscription = async (req, res) => {
       await emailQueue.add(
         { emailType: subscription.frequency == "weekly" ? "sub-cancel-weekly" : "sub-cancel-monthly", mailOptions: { to: subscription.data._billing_email,
           
-          name:subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
+          name: subscription.data._billing_first_name+" "+subscription.data._billing_last_name  } },
 
         {
           attempts: 3, // Retry up to 3 times in case of failure

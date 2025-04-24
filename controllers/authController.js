@@ -194,7 +194,7 @@ exports.requestPasswordReset = async (req, res) => {
                 <table width="600px" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                     <!-- Header Section -->
                     <tr>
-                        <td style="background-color: #ff6600; padding: 20px; text-align: center;">
+                        <td style="background-color: #FF5100; padding: 20px; text-align: center;">
                             <h1 style="color: #ffffff; font-size: 24px; margin: 0;">Je wachtwoord resetten</h1>
                         </td>
                     </tr>
@@ -211,13 +211,13 @@ exports.requestPasswordReset = async (req, res) => {
                     <!-- Button Section -->
                     <tr>
                         <td align="center" style="padding: 20px;">
-                            <a href="${resetLink}" style="display: inline-block; background-color: #ff9900; color: #ffffff; text-decoration: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 5px;">Wachtwoord resetten</a>
+                            <a href="${resetLink}" style="display: inline-block; background-color: #FF5100; color: #ffffff; text-decoration: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 5px;">Wachtwoord resetten</a>
                         </td>
                     </tr>
                     
                     <!-- Footer Section -->
                     <tr>
-                        <td align="center" style="background-color: #ff6600; padding: 20px; color: #ffffff; font-size: 14px; line-height: 1.6;">
+                        <td align="center" style="background-color: #FF5100; padding: 20px; color: #ffffff; font-size: 14px; line-height: 1.6;">
                             <p style="margin: 0;">Volg ons op</p>
                             <p style="margin: 10px 0;">
                                 <a href="https://www.facebook.com/FitPrepsOfficial" style="text-decoration: none; color: #ffffff; margin-right: 10px;">

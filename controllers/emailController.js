@@ -2769,7 +2769,7 @@ exports.newSubscriptionNotificationController = async (subscriptionData) => {
     `;
     
     // Send email to the owner's email address
-    await sendEmail('siyamrh7@gmail.com', subject, html);
+    await sendEmail('info@fitpreps.nl', subject, html);
     console.log('New subscription notification sent to owner');
     
   } catch (error) {

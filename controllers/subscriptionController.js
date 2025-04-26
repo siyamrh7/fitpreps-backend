@@ -139,9 +139,10 @@ async function processMonthlyReminders(today){
     const db = getDB();
     const subscriptions = await db.collection('subscriptions')
       .find({ 
-        status: 'active',
+        status: { $in: ['active', 'inactive'] },
         mealSelected:false,
-        frequency:"monthly"
+        frequency:"monthly",
+        paymentStatus:"paid",
       })
       .toArray();
       const emailSummary ={
@@ -224,9 +225,10 @@ cron.schedule('0 9 * * 0', async () => {
     // Get all active subscriptions
     const subscriptions = await db.collection('subscriptions')
       .find({ 
-        status: 'active',
+        status: { $in: ['active', 'inactive'] },
         mealSelected:false,
-        frequency:"weekly"
+        frequency:"weekly",
+        paymentStatus:"paid",
       })
       .toArray();
     
@@ -284,9 +286,11 @@ cron.schedule('0 9 * * 5', async () => {
     // Get all active subscriptions
     const subscriptions = await db.collection('subscriptions')
       .find({ 
-        status: 'active',
+        status: { $in: ['active', 'inactive'] },
         mealSelected:false,
-        frequency:"weekly"
+        frequency:"weekly",
+        paymentStatus:"paid",
+        
       })
       .toArray();
     
@@ -1688,7 +1692,8 @@ exports.resumeSubscription = async (req, res) => {
             lastPaymentDate: now.toISODate(),
             deliveryDate: null,
             planEndDate: nextPaymentDate,
-            lastPlanEndDate: resumeDateFormatted
+            lastPlanEndDate: resumeDateFormatted,
+            mealSelected: false,
           },
           $push: {
             paymentHistory: {
@@ -1756,7 +1761,7 @@ exports.pauseSubscription = async (req, res) => {
           pausedAt: now.toJSDate(),   
           scheduledResumeDate: resumeDate || null,
           pauseReason: reason || 'User requested pause',
-          mealSelected: false
+          
         },
         $push: {
           activity: {
@@ -1833,7 +1838,7 @@ exports.cancelSubscription = async (req, res) => {
           scheduledCancellationDate: subscription.nextPaymentDate,
           cancellationRequested: now.toJSDate(),
           cancelReason: reason || 'User requested cancellation',
-          mealSelected: false
+          
         },
         $push: {
           activity: {

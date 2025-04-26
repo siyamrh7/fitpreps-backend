@@ -356,14 +356,13 @@ async function processPointDeliveries(date) {
   
   for (const sub of subscriptions) {
     try {
-      // Calculate points to add (subscription points minus points already used)
-      const pointsToAdd = parseInt(sub.pointsPerCycle) - parseInt(sub.pointsUsed || 0);
+      // Calculate points to add (subscription points minus points already used
       const userId = sub.userId;
       
       // Update user points
       await db.collection('users').updateOne(
         { _id: new ObjectId(userId) },
-        { $inc: { points: pointsToAdd } }
+        { $inc: { points: -parseInt(sub.pointsUsed) } }
       );
       
       // Create order record
@@ -521,7 +520,7 @@ async function processSubscriptionPayments(date) {
   // Get all subscriptions that should be charged today
   const subscriptions = await db
     .collection("subscriptions")
-    .find({ nextPaymentDate: date, status: "active" })
+    .find({ nextPaymentDate: date,  status: { $in: ['active', 'inactive'] }, paymentStatus:'paid'    })
     .toArray();
   
   console.log(`Found ${subscriptions.length} subscriptions for payment today`);
@@ -561,7 +560,7 @@ async function processSubscriptionPayments(date) {
           $push: { 
             paymentHistory: {
               paymentId: payment.id,
-              amount: parseFloat(sub.amountPerCycle),
+              amount: findPriceByPoints(sub.pointsPerCycle, sub.frequency).toFixed(2),
               date: now.toJSDate(),
               status: payment.status,
               type: 'recurring-payment'
@@ -577,7 +576,7 @@ async function processSubscriptionPayments(date) {
       // Update next payment date in sub 
       await db.collection('subscriptions').updateOne(
         { _id: sub._id },
-        { $set: { nextPaymentDate: nextPaymentDate, mealSelected:false, lastPlanEndDate:sub.nextPaymentDate, planEndDate:nextPaymentDate } }
+        { $set: { nextPaymentDate: nextPaymentDate, mealSelected:false, lastPlanEndDate:sub.planEndDate, planEndDate:calculateNextDate(sub.planEndDate, sub.frequency) } }
       );
       
       await db.collection('users').updateOne(
@@ -639,7 +638,7 @@ async function processSubscriptionPayments(date) {
     }
   }
 }
-
+// setTimeout(async() =>{await processSubscriptionPayments(DateTime.now().setZone('Europe/Amsterdam').toISODate())},4000)
 /**
  * Calculate the next date based on frequency
  */
@@ -1062,10 +1061,10 @@ exports.paymentWebhook = async (req, res) => {
       // if(subscription.pendingCancellation){
       //   await db.collection('subscriptions').updateOne(
       //     { _id: subscription._id },
-      //     { $set: { pendingCancellationConfirmed: true } }
+      //     { $set: { pendingCancellationConfirmed: true } } 
       //   );
       // }
-      console.log(`Payment ${paymentId} confirmed for subscription ${subscription._id}; next payment scheduled for ${nextPaymentDate}`);
+      console.log(`Payment ${paymentId} confirmed for subscription ${subscription._id};`);
     } 
     else if (payment.status === 'failed' || payment.status === 'canceled' || payment.status === 'expired') {
       // Check if this is the third failed payment

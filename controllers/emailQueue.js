@@ -17,7 +17,8 @@ const { orderEmailController, contactEmailController, orderEmailController2, req
   monthlyMealReminderControllerFirst,
   monthlyMealReminderControllerSecond,
   monthlyMealReminderControllerLast,
-  dailyEmailSummaryControllerOwner
+  dailyEmailSummaryControllerOwner,
+  paymentFailureNotificationController
 } = require('./emailController');
 
 // Initialize the email queue
@@ -97,7 +98,9 @@ emailQueue.process(10, async (job) => {
    if(emailType == "sub-daily-summary-owner"){
     await dailyEmailSummaryControllerOwner(mailOptions);
    }
-
+   if(emailType == "sub-payment-failure"){
+    await paymentFailureNotificationController(mailOptions);
+   }
 
   } catch (error) {
     console.error(`Error sending email for order #${orderData._id}:`, error);

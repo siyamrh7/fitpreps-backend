@@ -2823,3 +2823,205 @@ exports.dailyEmailSummaryControllerOwner = async (mailOptions) => {
     throw error;
   }
 };
+
+// Notify owner when a subscription payment fails
+exports.paymentFailureNotificationController = async (subscriptionData) => {
+  try {
+    const { customerName, customerEmail, subscriptionId, amount, paymentDate, errorMessage, plan } = subscriptionData;
+    
+    const subject = `⚠️ Mislukte Betaling: ${customerName} - ${plan} Abonnement`;
+    const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Betalingsfout Notificatie</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#ff3a30; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">⚠️ Betalingsfout Gedetecteerd</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">Een abonnementsverlenging is mislukt</p>
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hallo,</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          Er is een probleem opgetreden bij het verwerken van een terugkerende betaling voor een abonnement.
+          Hieronder staan de details:
+        </p>
+        
+        <!-- Payment Info -->
+        <table width="100%" style="border-collapse: collapse; margin: 25px 0; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+          <tr style="background-color:#f5f5f5;">
+            <td style="padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee;">Klant</td>
+            <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${customerName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee;">Email</td>
+            <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${customerEmail}</td>
+          </tr>
+          <tr style="background-color:#f5f5f5;">
+            <td style="padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee;">Abonnement ID</td>
+            <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${subscriptionId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee;">Abonnement Type</td>
+            <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${plan}</td>
+          </tr>
+          <tr style="background-color:#f5f5f5;">
+            <td style="padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee;">Bedrag</td>
+            <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">€${parseFloat(amount || 0).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee;">Poging Datum</td>
+            <td style="padding: 12px 15px; border-bottom: 1px solid #eee;">${paymentDate}</td>
+          </tr>
+          <tr style="background-color:#fff1f0;">
+            <td style="padding: 12px 15px; font-weight: bold; color: #ff3a30;">Foutmelding</td>
+            <td style="padding: 12px 15px; color: #ff3a30;">${errorMessage || 'Onbekende fout bij betalingsverwerking'}</td>
+          </tr>
+        </table>
+        
+        <div style="background-color:#fff1f0; border-left:4px solid #ff3a30; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#ff3a30; font-size:18px;">Aanbevolen Actie:</h3>
+          <p style="margin-bottom:10px; font-size:16px;">
+            Deze klant heeft mogelijk problemen met hun betaalmethode. Aanbevolen acties:
+          </p>
+          <ol style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:5px;">Contact opnemen met de klant om hen over de mislukte betaling te informeren</li>
+            <li style="margin-bottom:5px;">Verzoeken om hun betaalgegevens bij te werken</li>
+            <li style="margin-bottom:0;">Handmatig de betaling opnieuw proberen te verwerken na bevestiging</li>
+          </ol>
+        </div>
+        
+        <!-- CTA Button -->
+        <div style="text-align:center; margin:30px 0 20px;">
+          <a href="${process.env.FRONTEND_URI}/admin/subscriptions" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Bekijk in Admin Dashboard
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:20px; color: #666;">
+          Dit is een automatisch gegenereerde notificatie. Snel handelen wordt aanbevolen om abonnementsbehoud te garanderen.
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Systeem Notificatie
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    
+    // Send email to the owner's email address
+    await sendEmail('info@fitpreps.nl', subject, html);
+    await sendEmail('siyamrh7@gmail.com', subject, html);
+
+    console.log('Payment failure notification sent to owner');
+    
+    // If needed, also notify the customer about the payment failure
+    const customerSubject = 'Belangrijk: We konden je betaling niet verwerken';
+    const customerHtml = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Betalingsprobleem met je Fit Preps abonnement</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f7f7; font-family:'Helvetica Neue', Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:auto; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <tr>
+      <td style="background-color:#FD5001; padding:30px 20px; text-align:center;">
+        <h1 style="color:#ffffff; font-size:26px; margin:0;">Betalingsprobleem Gedetecteerd</h1>
+        <p style="color:#ffe9dc; font-size:16px; margin-top:8px;">We hebben je hulp nodig om je abonnement te behouden</p>
+      </td>
+    </tr>
+    
+    <!-- Main Content -->
+    <tr>
+      <td style="padding:30px; color:#333333;">
+        <p style="font-size:16px; line-height:1.6;">Hallo ${customerName},</p>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          We hebben geprobeerd je maandelijkse betaling van €${parseFloat(amount || 0).toFixed(2)} voor je ${plan} abonnement te verwerken, maar helaas is dit niet gelukt.
+        </p>
+        
+        <div style="background-color:#f9f5f2; border-left:4px solid #FD5001; padding:20px; margin:25px 0; border-radius:8px;">
+          <h3 style="margin-top:0; color:#FD5001; font-size:18px;">Wat kun je doen?</h3>
+          <ol style="padding-left:20px; margin-bottom:0;">
+            <li style="margin-bottom:10px;">Log in op je account</li>
+            <li style="margin-bottom:10px;">Controleer of je betaalgegevens nog up-to-date zijn</li>
+            <li style="margin-bottom:0;">Update indien nodig je betaalmethode</li>
+          </ol>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6;">
+          We zullen de betaling binnenkort opnieuw proberen. Als je vragen hebt of hulp nodig hebt, 
+          neem dan gerust contact met ons op via <a href="mailto:info@fitpreps.nl" style="color:#FD5001; text-decoration:underline;">info@fitpreps.nl</a>.
+        </p>
+        
+        <!-- Call to Action Button -->
+        <div style="text-align:center; margin:30px 0;">
+          <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+            Update Mijn Betaalgegevens
+          </a>
+        </div>
+        
+        <p style="font-size:16px; line-height:1.6; margin-top:30px;">
+          Met vriendelijke groet,<br>
+          <strong>Team Fit Preps</strong>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px; text-align:center; background-color:#f9f9f9; border-top:1px solid #eeeeee;">
+        <p style="margin:0; font-size:14px; color:#888888;">
+          Volg ons op 
+          <a href="https://www.facebook.com/FitPrepsOfficial" style="color:#FD5001; text-decoration:none;">Facebook</a> en 
+          <a href="https://www.instagram.com/fitpreps.nl/?hl=en" style="color:#FD5001; text-decoration:none;">Instagram</a>
+        </p>
+        <p style="margin:10px 0 0; font-size:14px; color:#888888;">
+          © ${new Date().getFullYear()} Fit Preps • Alle rechten voorbehouden
+        </p>
+      </td>
+    </tr>
+    
+  </table>
+
+</body>
+</html>
+    `;
+    
+    // Send email to the customer
+    await sendEmail(customerEmail, customerSubject, customerHtml);
+    console.log('Payment failure notification sent to customer');
+    
+  } catch (error) {
+    console.error('Error sending payment failure notification emails:', error);
+  }
+};

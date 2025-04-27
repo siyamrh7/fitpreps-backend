@@ -1020,24 +1020,25 @@ exports.paymentWebhook = async (req, res) => {
     }
     
     // Update payment status in subscription
-    // await db.collection('subscriptions').updateOne(
-    //   { _id: subscription._id },
-    //   { 
-    //     $set: { 
-    //       paymentStatus: payment.status,
-    //       updatedAt: new Date()
-    //     },
-    //     $push: {
-    //       paymentHistory: {
-    //         paymentId: paymentId,
-    //         status: payment.status,
-    //         date: new Date(),
-    //         amount: subscription.amountPerCycle,
-    //         type: 'recurring-payment-update'
-    //       }
-    //     }
-    //   }
-    // );
+    await db.collection('subscriptions').updateOne(
+      { _id: subscription._id },
+      { 
+        $set: { 
+          
+          updatedAt: new Date(),
+          recurringStatus:payment.status
+        },
+        $push: {
+          paymentHistory: {
+            paymentId: paymentId,
+            status: payment.status,
+            date: new Date(),
+            amount: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2),
+            type: 'recurring-payment-update'
+          }
+        }
+      }
+    );
     
     if (payment.status === 'paid') {
       // Calculate next payment date based on frequency
@@ -1067,6 +1068,32 @@ exports.paymentWebhook = async (req, res) => {
       console.log(`Payment ${paymentId} confirmed for subscription ${subscription._id};`);
     } 
     else if (payment.status === 'failed' || payment.status === 'canceled' || payment.status === 'expired') {
+        // Log error to database
+        await db.collection("errors").insertOne({
+          type: "paymentProcessingError",
+          subscriptionId: subscription._id,
+          userId: subscription.userId,
+          error:payment.status,
+          timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
+        });
+        const mailOptions = {
+          customerName: subscription.data._billing_first_name+" "+subscription.data._billing_last_name,
+          customerEmail: subscription.data._billing_email,
+          subscriptionId: subscription._id,
+          amount: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2),
+          paymentDate: DateTime.now().setZone('Europe/Amsterdam').toISO(),
+          errorMessage: 'Insufficient funds ',
+          plan: subscription.frequency == "weekly" ? "Wekelijks Abonnement" : "Maandelijks Abonnement"
+        }
+        setImmediate(async () => {
+          await emailQueue.add(
+            { emailType: "sub-payment-failure", mailOptions: mailOptions},
+            {
+              attempts: 3, // Retry up to 3 times in case of failure
+              backoff: 5000, // Retry with a delay of 5 seconds
+            }
+          );
+        });
       // Check if this is the third failed payment
       const failedPayments = subscription.paymentHistory
         .filter(p => p.status === 'failed' || p.status === 'canceled' || p.status === 'expired')
@@ -1086,13 +1113,13 @@ exports.paymentWebhook = async (req, res) => {
         console.log(`Subscription ${subscription._id} marked as payment-failed due to multiple failed attempts`);
       } else {
         // Retry payment in 1 day
-        const now = DateTime.now().setZone('Europe/Amsterdam');
-        const retryDate = now.plus({ days: 1 });
+        // const now = DateTime.now().setZone('Europe/Amsterdam');
+        // const retryDate = now.plus({ days: 1 });
         
-        await db.collection('subscriptions').updateOne(
-          { _id: subscription._id },
-          { $set: { nextPaymentDate: retryDate.toISODate() } }
-        );
+        // await db.collection('subscriptions').updateOne(
+        //   { _id: subscription._id },
+        //   { $set: { nextPaymentDate: retryDate.toISODate() } }
+        // );
         
         console.log(`Payment ${paymentId} failed for subscription ${subscription._id}; retry scheduled for ${retryDate.toISODate()}`);
       }

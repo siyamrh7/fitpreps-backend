@@ -537,7 +537,7 @@ exports.checkPayment = async (req, res) => {
         );
 
 
-        if ((result.isPaid() || result.isAuthorized()) && orderData.status == "cancelled") {
+        if (result.isPaid()  && orderData.status == "cancelled") {
 
           setImmediate(async () => {
 

@@ -1312,6 +1312,10 @@ exports.updatePackingSlipStatus = async (req, res) => {
 exports.getAnalytics = async (req, res) => {
   try {
     const ordersCollection = getDB().collection('orders');
+    
+    // Extract date range from request if provided
+    const { startDate, endDate } = req.query;
+    const hasCustomDateRange = startDate && endDate;
 
     // Helper function to calculate date ranges
     const getDateRange = (type) => {
@@ -1331,6 +1335,12 @@ exports.getAnalytics = async (req, res) => {
         case 'today':
           start.setHours(0, 0, 0, 0); // Set to midnight (start of the day)
           break;
+        case 'custom':
+          // Use the provided custom date range
+          return {
+            start: new Date(startDate),
+            end: new Date(endDate)
+          };
         default:
           throw new Error('Invalid date range type');
       }
@@ -1500,6 +1510,13 @@ exports.getAnalytics = async (req, res) => {
     const { start: startOfWeek, end: endOfWeek } = getDateRange('weekly');
     const { start: startOfYear, end: endOfYear } = getDateRange('yearly');
     const { start: startOfToday, end: endOfToday } = getDateRange('today');
+    
+    // Get custom date range data if provided
+    let customData = null;
+    if (hasCustomDateRange) {
+      const { start: customStart, end: customEnd } = getDateRange('custom');
+      customData = await aggregateMetrics(customStart, customEnd);
+    }
 
     const monthlyData = await aggregateMetrics(startOfMonth, endOfMonth);
     const weeklyData = await aggregateMetrics(startOfWeek, endOfWeek);
@@ -1778,6 +1795,24 @@ exports.getAnalytics = async (req, res) => {
         cancelledOrders: todayData.cancelledOrders,
       },
     };
+    
+    // Add custom date range data if available
+    if (customData) {
+      analytics.custom = {
+        totalSales: customData.totalSales,
+        completedOrders: customData.totalOrders,
+        totalTaxes: customData.totalTaxes,
+        totalProductTaxes: customData.totalProductTaxes,
+        totalShippingTaxes: customData.totalShippingTaxes,
+        totalDiscounts: customData.totalDiscounts,
+        processingOrders: customData.processingOrders,
+        cancelledOrders: customData.cancelledOrders,
+        dateRange: {
+          startDate,
+          endDate
+        }
+      };
+    }
 
     // Send the analytics response
     res.status(200).json(analytics);

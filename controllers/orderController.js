@@ -1725,7 +1725,7 @@ exports.getAnalytics = async (req, res) => {
       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
       totalOrders: totalOrders[0]?.totalOrders || 0,
-      processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
+      processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing order
       totalActiveSubscriptions,
       monthlyOrders,
       dailyOrders,

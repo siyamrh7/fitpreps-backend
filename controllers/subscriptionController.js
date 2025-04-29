@@ -1924,15 +1924,28 @@ exports.getSubscriptions = async (req, res) => {
     if (userId) {
       filter.userId = new ObjectId(userId);
     }
-    if(searchTerm) {
+    if (searchTerm) {
       const regex = new RegExp(searchTerm, 'i');
-      filter.data = {
-        ...filter.data,
-        $or: [
-          { _billing_first_name: regex },
-          { _billing_last_name: regex },          { _billing_email: regex },
-        ],
-      };    }
+      const isFullId = /^[0-9a-fA-F]{24}$/.test(searchTerm); // Check if it's a full ObjectId
+      
+     
+        filter.$or= [
+          {   "data._billing_first_name": regex },
+          { "data._billing_last_name": regex },
+          { "data._billing_email": regex },
+        ]
+      
+      
+      if (isFullId) {
+        // If the search term is a full ObjectId, search directly
+        filter.$or.push({ _id: new ObjectId(searchTerm) });
+      } else {
+        // Convert `_id` to a string inside MongoDB and search
+        filter.$or.push({
+          $expr: { $regexMatch: { input: { $toString: "$_id" }, regex: searchTerm, options: "i" } }
+        });
+      }
+    }
 
     if (status) {
       if (Array.isArray(status)) {

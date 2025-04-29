@@ -1491,7 +1491,10 @@ exports.getAnalytics = async (req, res) => {
       { $match: { status: 'processing' } },
       { $count: "processingOrders" },
     ]).toArray();
-
+    //total active subscriptions
+    const totalActiveSubscriptions = await getDB().collection('subscriptions').countDocuments({
+      status: 'active',
+    });
     // Date ranges for monthly, weekly, yearly, and today
     const { start: startOfMonth, end: endOfMonth } = getDateRange('monthly');
     const { start: startOfWeek, end: endOfWeek } = getDateRange('weekly');
@@ -1723,6 +1726,7 @@ exports.getAnalytics = async (req, res) => {
       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
       totalOrders: totalOrders[0]?.totalOrders || 0,
       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing orders
+      totalActiveSubscriptions,
       monthlyOrders,
       dailyOrders,
       hourlyOrders,

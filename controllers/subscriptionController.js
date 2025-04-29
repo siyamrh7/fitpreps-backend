@@ -544,7 +544,7 @@ async function processSubscriptionPayments(date) {
           type: 'recurring-subscription-payment'
         }
       });
-      
+   
       const now = DateTime.now().setZone('Europe/Amsterdam');
       
       // Update subscription with payment information
@@ -568,16 +568,21 @@ async function processSubscriptionPayments(date) {
           }
         }
       );
+      if (sub.recurringStatus === 'failed' || sub.recurringStatus === 'canceled' || sub.recurringStatus === 'expired') {
+        return null
+      }
          const nextPaymentDate = calculateNextDate(
         sub.nextPaymentDate || now.toISODate(),
         sub.frequency
       );
-     
+      
+        await db.collection('subscriptions').updateOne(
+          { _id: sub._id },
+          { $set: { nextPaymentDate: nextPaymentDate, mealSelected:false, lastPlanEndDate:sub.planEndDate, planEndDate:calculateNextDate(sub.planEndDate, sub.frequency) } }
+        );
+      
       // Update next payment date in sub 
-      await db.collection('subscriptions').updateOne(
-        { _id: sub._id },
-        { $set: { nextPaymentDate: nextPaymentDate, mealSelected:false, lastPlanEndDate:sub.planEndDate, planEndDate:calculateNextDate(sub.planEndDate, sub.frequency) } }
-      );
+     
       
       await db.collection('users').updateOne(
         { _id: new ObjectId(sub.userId) },
@@ -613,7 +618,7 @@ async function processSubscriptionPayments(date) {
         .filter(p => p.status === 'failed')
         .filter(p => {
           const paymentDate = DateTime.fromJSDate(p.date).setZone('Europe/Amsterdam');
-          const thirtyDaysAgo = DateTime.now().setZone('Europe/Amsterdam').minus({ days: 30 });
+          const thirtyDaysAgo = DateTime.now().setZone('Europe/Amsterdam').minus({ days: sub.frequency === 'weekly' ? 7 : 30 });
           return paymentDate > thirtyDaysAgo;
         });
         
@@ -1076,30 +1081,13 @@ exports.paymentWebhook = async (req, res) => {
           error:payment.status,
           timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
         });
-        const mailOptions = {
-          customerName: subscription.data._billing_first_name+" "+subscription.data._billing_last_name,
-          customerEmail: subscription.data._billing_email,
-          subscriptionId: subscription._id,
-          amount: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2),
-          paymentDate: DateTime.now().setZone('Europe/Amsterdam').toISO(),
-          errorMessage: 'Insufficient funds ',
-          plan: subscription.frequency == "weekly" ? "Wekelijks Abonnement" : "Maandelijks Abonnement"
-        }
-        setImmediate(async () => {
-          await emailQueue.add(
-            { emailType: "sub-payment-failure", mailOptions: mailOptions},
-            {
-              attempts: 3, // Retry up to 3 times in case of failure
-              backoff: 5000, // Retry with a delay of 5 seconds
-            }
-          );
-        });
+      
       // Check if this is the third failed payment
       const failedPayments = subscription.paymentHistory
         .filter(p => p.status === 'failed' || p.status === 'canceled' || p.status === 'expired')
         .filter(p => {
           const paymentDate = DateTime.fromJSDate(p.date).setZone('Europe/Amsterdam');
-          const thirtyDaysAgo = DateTime.now().setZone('Europe/Amsterdam').minus({ days: 30 });
+          const thirtyDaysAgo = DateTime.now().setZone('Europe/Amsterdam').minus({ days: subscription.frequency === 'monthly' ? 30 : 7 });
           return paymentDate > thirtyDaysAgo;
         });
       
@@ -1113,14 +1101,31 @@ exports.paymentWebhook = async (req, res) => {
         console.log(`Subscription ${subscription._id} marked as payment-failed due to multiple failed attempts`);
       } else {
         // Retry payment in 1 day
-        // const now = DateTime.now().setZone('Europe/Amsterdam');
-        // const retryDate = now.plus({ days: 1 });
+        const now = DateTime.now().setZone('Europe/Amsterdam');
+        const retryDate = now.plus({ days: 1 });
         
-        // await db.collection('subscriptions').updateOne(
-        //   { _id: subscription._id },
-        //   { $set: { nextPaymentDate: retryDate.toISODate() } }
-        // );
-        
+        await db.collection('subscriptions').updateOne(
+          { _id: subscription._id },
+          { $set: { nextPaymentDate: retryDate.toISODate() } }
+        );
+        const mailOptions = {
+          customerName: subscription.data._billing_first_name+" "+subscription.data._billing_last_name,
+          customerEmail: subscription.data._billing_email,
+          subscriptionId: subscription._id,
+          amount: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2),
+          paymentDate: DateTime.now().setZone('Europe/Amsterdam').toISO(),
+          errorMessage: 'Insufficient funds Retry payment on '+ retryDate.toISODate(),
+          plan: subscription.frequency == "weekly" ? "Wekelijks Abonnement" : "Maandelijks Abonnement"
+        }
+        setImmediate(async () => {
+          await emailQueue.add(
+            { emailType: "sub-payment-failure", mailOptions: mailOptions},
+            {
+              attempts: 3, // Retry up to 3 times in case of failure
+              backoff: 5000, // Retry with a delay of 5 seconds
+            }
+          );
+        });
         console.log(`Payment ${paymentId} failed for subscription ${subscription._id}; retry scheduled for ${retryDate.toISODate()}`);
       }
     }
@@ -1505,12 +1510,7 @@ exports.getUserSubscriptionData = async (req, res) => {
     
     // Add cancellation information if applicable
     const responseData = {
-      ...subscription,
-      cancellationInfo: subscription.pendingCancellation ? {
-        scheduledCancellationDate: subscription.scheduledCancellationDate,
-        cancellationRequested: subscription.cancellationRequested,
-        reason: subscription.cancelReason
-      } : null
+      ...subscription
     };
     
     return res.status(200).json({
@@ -1908,6 +1908,7 @@ exports.getSubscriptions = async (req, res) => {
       status,
       frequency,
       startDate,
+      searchTerm,
       endDate,
       pendingCancellation,
       limit = 50,
@@ -1923,6 +1924,15 @@ exports.getSubscriptions = async (req, res) => {
     if (userId) {
       filter.userId = new ObjectId(userId);
     }
+    if(searchTerm) {
+      const regex = new RegExp(searchTerm, 'i');
+      filter.data = {
+        ...filter.data,
+        $or: [
+          { _billing_first_name: regex },
+          { _billing_last_name: regex },          { _billing_email: regex },
+        ],
+      };    }
 
     if (status) {
       if (Array.isArray(status)) {
@@ -1989,12 +1999,7 @@ exports.getSubscriptions = async (req, res) => {
     return res.json({
       success: true,
       subscriptions: subscriptions.map(sub => ({
-        ...sub,
-        cancellationInfo: sub.pendingCancellation ? {
-          scheduledCancellationDate: sub.scheduledCancellationDate,
-          cancellationRequested: sub.cancellationRequested,
-          reason: sub.cancelReason
-        } : null
+        ...sub
       })),
       pagination: {
         total: totalCount,
@@ -2033,12 +2038,7 @@ exports.getSubscriptionById = async (req, res) => {
     
     // Add cancellation information if applicable
     const responseData = {
-      ...subscription,
-      cancellationInfo: subscription.pendingCancellation ? {
-        scheduledCancellationDate: subscription.scheduledCancellationDate,
-        cancellationRequested: subscription.cancellationRequested,
-        reason: subscription.cancelReason
-      } : null
+      ...subscription
     };
     
     return res.json({

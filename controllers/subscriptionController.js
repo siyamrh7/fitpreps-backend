@@ -527,6 +527,9 @@ async function processSubscriptionPayments(date) {
   
   for (const sub of subscriptions) {
     try {
+      if (sub.pendingCancellationConfirmed){
+        return null
+      }
       // Create a payment through Mollie
       const payment = await mollieClient.payments.create({
         amount: {

@@ -527,8 +527,12 @@ async function processSubscriptionPayments(date) {
   
   for (const sub of subscriptions) {
     try {
-      if (sub.pendingCancellationConfirmed){
-        return null
+      if (sub.pendingCancellationConfirmed) {
+        if (sub.recurringStatus === 'failed' || sub.recurringStatus === 'canceled' || sub.recurringStatus === 'expired') {
+          
+        }else {
+          return null
+        }
       }
       // Create a payment through Mollie
       const payment = await mollieClient.payments.create({
@@ -1073,7 +1077,12 @@ exports.paymentWebhook = async (req, res) => {
       //     { $set: { pendingCancellationConfirmed: true } } 
       //   );
       // }
-      console.log(`Payment ${paymentId} confirmed for subscription ${subscription._id};`);
+      if (subscription.recurringStatus === 'failed' || subscription.recurringStatus === 'canceled' || subscription.recurringStatus === 'expired') {
+        await db.collection('subscriptions').updateOne(
+          { _id: subscription._id },
+          { $set: { nextPaymentDate: subscription.frequency === 'weekly' ? subscription.lastPlanEndDate : subscription.planEndDate } }
+        );
+      }
     } 
     else if (payment.status === 'failed' || payment.status === 'canceled' || payment.status === 'expired') {
         // Log error to database

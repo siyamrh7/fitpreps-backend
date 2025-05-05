@@ -110,8 +110,8 @@ function calculateNextDateOfBilling(dateString, frequency) {
   // fallback
   return date.toISODate();
 }
-// Configure the cron job to run at 1 AM every day
-cron.schedule("0 1 * * *", processSubscriptions,{
+// Configure the cron job to run at 6 AM every day
+cron.schedule("0 6 * * *", processSubscriptions,{
   timezone: "Europe/Amsterdam"
 });
 /**
@@ -528,9 +528,7 @@ async function processSubscriptionPayments(date) {
   for (const sub of subscriptions) {
     try {
       if (sub.pendingCancellationConfirmed) {
-        if (sub.recurringStatus === 'failed' || sub.recurringStatus === 'canceled' || sub.recurringStatus === 'expired') {
-          
-        }else {
+        if (sub.recurringStatus === 'paid' || sub.recurringStatus === 'pending') {
           return null
         }
       }
@@ -1114,7 +1112,7 @@ exports.paymentWebhook = async (req, res) => {
       } else {
         // Retry payment in 1 day
         const now = DateTime.now().setZone('Europe/Amsterdam');
-        const retryDate = now.plus({ days: 1 });
+        const retryDate = now.plus({ days: 2 });
         
         await db.collection('subscriptions').updateOne(
           { _id: subscription._id },

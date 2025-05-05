@@ -7,6 +7,7 @@ const path = require('path');
 const { connectDB } = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const productRoutes = require('./routes/productRoutes');
+const supplementRoutes = require('./routes/supplementRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const authRoutes = require('./routes/authRoutes');
 const couponRoutes = require('./routes/couponRoutes');
@@ -41,6 +42,7 @@ app.post("/send-email", uploadSingle, contactController)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/supplements', supplementRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/wishlist', wishlistRoutes);

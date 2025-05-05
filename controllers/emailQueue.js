@@ -27,7 +27,7 @@ const emailQueue = new Bull('emailQueue', {
 });
 
 // Email processing logic
-emailQueue.process(10, async (job) => {
+emailQueue.process(2, async (job) => {
   const { orderData, title, description, emailType, mailOptions, user, password } = job.data;
 
   try {

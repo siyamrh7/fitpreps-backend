@@ -1226,7 +1226,7 @@ exports.weeklySubscriptionStartedController = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Kies je maaltijden
           </a>
         </div>
@@ -1329,7 +1329,7 @@ exports.monthlySubscriptionStartedController = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
            Kies je maaltijden
           </a>
         </div>
@@ -1437,7 +1437,7 @@ exports.subscriptionPausedController = async (mailOptions) => {
           <tr>
             <td style="text-align:center; padding:30px 0;">
               <p style="font-size:15px; color:#333;">Wil je vóór die tijd weer starten?</p>
-              <a href="${ResumeLink}" style="background-color:#FD5001; color:#ffffff; padding:12px 32px; font-size:15px; font-weight:bold; text-decoration:none; border-radius:32px; display:inline-block;">
+              <a href=""https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:12px 32px; font-size:15px; font-weight:bold; text-decoration:none; border-radius:32px; display:inline-block;">
                 Hervat mijn abonnement
               </a>
             </td>
@@ -1508,7 +1508,7 @@ exports.subscriptionAdjustedController = async (mailOptions) => {
             <p style="margin: 0 0 15px 0; font-size: 16px;">These changes will take effect on your next billing cycle.</p>
             
             <div style="text-align: center; margin: 20px 0;">
-              <a href="https://fitpreps.nl/account" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">View My Subscription</a>
+              <a href="https://fitpreps.nl/login" style="display: inline-block; background-color: #ff4e00; color: #ffffff; text-decoration: none; padding: 10px 20px; font-size: 16px; border-radius: 5px;">View My Subscription</a>
             </div>
             
             <p style="margin: 0 0 15px 0; font-size: 16px;">Thank you for your business!</p>
@@ -1592,7 +1592,7 @@ exports.orderConfirmationEmailControllerWeekly = async (mailOptions) => {
         
         <!-- Order Tracking Button (Optional) -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Bekijk Mijn Bestelling
           </a>
         </div>
@@ -1693,7 +1693,7 @@ exports.orderConfirmationEmailControllerMonthly = async (mailOptions) => {
         
         <!-- Order Tracking Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Bekijk Mijn Bestelling
           </a>
         </div>
@@ -1975,7 +1975,7 @@ exports.newSubscriptionNotificationController = async (subscriptionData) => {
             
             <!-- CTA Button -->
             <div style="text-align:center; margin:30px 0 20px;">
-              <a href="${process.env.FRONTEND_URI}/admin/subscriptions" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+              <a href="https://fitpreps.nl/admin/subscriptions" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
                 Bekijk in Admin Dashboard
               </a>
             </div>
@@ -2071,7 +2071,7 @@ exports.weeklyRenewalNotificationController = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Kies je maaltijden
           </a>
         </div>
@@ -2174,7 +2174,7 @@ exports.monthlyRenewalNotificationController = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Kies je maaltijden
           </a>
         </div>
@@ -2280,7 +2280,7 @@ exports.fridayMealReminderController = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Kies je maaltijden nu
           </a>
         </div>
@@ -2384,7 +2384,7 @@ exports.sundayMealReminderController = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Aanpassen vóór 23:59
           </a>
         </div>
@@ -2487,7 +2487,7 @@ exports.monthlyMealReminderControllerFirst = async (mailOptions) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/subscriptions/addmeals" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/login" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Maaltijden kiezen
           </a>
         </div>
@@ -2603,7 +2603,7 @@ exports.monthlyMealReminderControllerSecond = async (mailOptions) => {
     <!-- CTA Button -->
     <tr>
       <td style="padding:0 30px 30px; text-align:center;">
-        <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
+        <a href="https://fitpreps.nl/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
           Kies mijn maaltijden
         </a>
       </td>
@@ -2704,7 +2704,7 @@ exports.monthlyMealReminderControllerLast = async (mailOptions) => {
     <!-- CTA Button -->
     <tr>
       <td style="padding:0 30px 30px; text-align:center;">
-        <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
+        <a href="https://fitpreps.nl/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 36px; font-size:16px; font-weight:bold; border-radius:30px; text-decoration:none; display:inline-block;">
           Laatste wijziging maken
         </a>
       </td>
@@ -2906,7 +2906,7 @@ exports.paymentFailureNotificationController = async (subscriptionData) => {
         
         <!-- CTA Button -->
         <div style="text-align:center; margin:30px 0 20px;">
-          <a href="${process.env.FRONTEND_URI}/admin/subscriptions" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://admin.fitpreps.nl/admin/subscriptions" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Bekijk in Admin Dashboard
           </a>
         </div>
@@ -2985,7 +2985,7 @@ exports.paymentFailureNotificationController = async (subscriptionData) => {
         
         <!-- Call to Action Button -->
         <div style="text-align:center; margin:30px 0;">
-          <a href="${process.env.FRONTEND_URI}/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
+          <a href="https://fitpreps.nl/profile" style="background-color:#FD5001; color:#ffffff; padding:14px 32px; font-size:16px; text-decoration:none; border-radius:6px; display:inline-block;">
             Update Mijn Betaalgegevens
           </a>
         </div>

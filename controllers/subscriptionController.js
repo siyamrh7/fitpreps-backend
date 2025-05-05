@@ -111,7 +111,7 @@ function calculateNextDateOfBilling(dateString, frequency) {
   return date.toISODate();
 }
 // Configure the cron job to run at 6 AM every day
-cron.schedule("0 6 * * *", processSubscriptions,{
+cron.schedule("0 10 * * *", processSubscriptions,{
   timezone: "Europe/Amsterdam"
 });
 /**
@@ -529,7 +529,7 @@ async function processSubscriptionPayments(date) {
     try {
       if (sub.pendingCancellationConfirmed) {
         if (sub.recurringStatus === 'paid' || sub.recurringStatus === 'pending') {
-          return null
+          continue; // skip this one, go to the next
         }
       }
       // Create a payment through Mollie
@@ -574,7 +574,7 @@ async function processSubscriptionPayments(date) {
         }
       );
       if (sub.recurringStatus === 'failed' || sub.recurringStatus === 'canceled' || sub.recurringStatus === 'expired') {
-        return null
+        continue; // skip this one, go to the next
       }
          const nextPaymentDate = calculateNextDate(
         sub.nextPaymentDate || now.toISODate(),

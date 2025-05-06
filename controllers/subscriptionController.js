@@ -111,7 +111,7 @@ function calculateNextDateOfBilling(dateString, frequency) {
   return date.toISODate();
 }
 // Configure the cron job to run at 6 AM every day
-cron.schedule("0 10 * * *", processSubscriptions,{
+cron.schedule("0 7 * * *", processSubscriptions,{
   timezone: "Europe/Amsterdam"
 });
 /**

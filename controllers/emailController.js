@@ -373,7 +373,7 @@ exports.orderEmailController = async (orderData, title, description) => {
         <div>
           <p style="font-weight: bold;">Factuur no. ${orderData._id}</p>
           <p>Payment Method: ${orderData.metadata?._payment_method_title}</p>
-          <p>Order Status: ${orderData.status}</p>
+          
         </div>
       </div>
       <div class="flex-container">
@@ -775,7 +775,7 @@ exports.orderEmailController2 = async (orderData, title, description) => {
         <div>
           <p style="font-weight: bold;">Factuur no. ${orderData._id}</p>
           <p>Payment Method: ${orderData.metadata?._payment_method_title}</p>
-          <p>Order Status: ${orderData.status}</p>
+          
         </div>
       </div>
       <div class="flex-container">

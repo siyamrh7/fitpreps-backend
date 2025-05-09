@@ -5,6 +5,7 @@ const mollieClient = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 const cron = require('node-cron');
 const { DateTime } = require('luxon');
 const emailQueue = require('../controllers/emailQueue');
+const { trackStartedSubscription, trackPlacedRecurringSubscriptionOrder ,trackCancelledSubscription} = require('./subscriptionEventsController');
 
 // Helper function for btoa (base64 encoding) in Node.js
 function btoa(string) {
@@ -387,7 +388,7 @@ async function processPointDeliveries(date) {
         const base64Credentials = btoa(`${username}:${password}`);
         
         const orderData = await getDB().collection("orders").findOne({ _id: orderResult.insertedId });
-        
+        await trackPlacedRecurringSubscriptionOrder(orderData);
         // Prepare parcel data for SendCloud
         const parcelData = {
           parcel: {
@@ -494,6 +495,7 @@ async function processPointDeliveries(date) {
           { _id: sub._id },
           { $set: { status: 'cancelled' } }
         );
+        await trackCancelledSubscription(sub);
       }
       console.log(`Order created and points added for subscription userId: ${sub.userId}`);
     } catch (error) {
@@ -970,6 +972,7 @@ exports.firstPaymentWebhook = async (req, res) => {
             }
           );
         });
+        await trackStartedSubscription(subscription);
         console.log(`Initial payment confirmed: Added ${pointsToAdd} points to user ${userId}`);
       }
     } 
@@ -1196,13 +1199,7 @@ exports.paymentCheck = async (req, res) => {
             amount: payment.amount,
             method: payment.method
           },
-          subscription: subscription ? {
-            id: subscription._id,
-            status: subscription.status,
-            pointsPerCycle: subscription.pointsPerCycle,
-            frequency: subscription.frequency,
-            startDate: subscription.startDate
-          } : null
+          subscription: subscription 
         });
       } else {
         return res.json({ 
@@ -1359,7 +1356,7 @@ exports.startSubscription = async (req, res) => {
         const base64Credentials = btoa(`${username}:${password}`);
         
         const orderData = await getDB().collection("orders").findOne({ _id: orderResult.insertedId });
-        
+        await trackPlacedRecurringSubscriptionOrder(orderData);
         // Prepare parcel data for SendCloud
         const parcelData = {
           parcel: {
@@ -1468,6 +1465,7 @@ exports.startSubscription = async (req, res) => {
           { _id: paymentData._id },
           { $set: { status: 'cancelled' } }
         );
+        await trackCancelledSubscription(paymentData);
       }
       return res.status(200).json({
         success: true,

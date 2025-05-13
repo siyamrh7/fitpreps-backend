@@ -267,6 +267,7 @@ async function trackSubscriptionPlacedOrder(orderData, eventId = null) {
           $country_code: orderData.metadata._billing_country,
           $state: orderData.metadata._billing_address_1,
           $zip_code: orderData.metadata._billing_postcode,
+          $is_new_customer: false, // Assuming the user is not new,
           $sales_channel_type: "subscription_contract",
         },
         profile_properties: {

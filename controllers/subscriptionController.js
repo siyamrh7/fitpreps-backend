@@ -5,7 +5,7 @@ const mollieClient = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 const cron = require('node-cron');
 const { DateTime } = require('luxon');
 const emailQueue = require('../controllers/emailQueue');
-const { trackStartedSubscription, trackPlacedRecurringSubscriptionOrder ,trackCancelledSubscription} = require('./subscriptionEventsController');
+const { trackStartedSubscription, trackPlacedRecurringSubscriptionOrder ,trackCancelledSubscription, trackSubscriptionPlacedOrder} = require('./subscriptionEventsController');
 
 // Helper function for btoa (base64 encoding) in Node.js
 function btoa(string) {
@@ -365,14 +365,19 @@ async function processPointDeliveries(date) {
         { _id: new ObjectId(userId) },
         { $inc: { points: -parseInt(sub.pointsUsed) } }
       );
-      
+      const totalPrice=parseFloat(sub.pointsUsed/10)- (findPriceByPoints(sub.pointsPerCycle, sub.frequency).toFixed(2) < 100 ? 6.95 : 0.00)
       // Create order record
       const orderResult = await getDB().collection("orders").insertOne({
         user_id: userId,
         subscriptionId: sub._id,
         items: sub.items,
         pointsUsed: parseInt(sub.pointsUsed),
-        metadata: {...sub.data,_delivery_date:date,_payment_method_title : "Subscription",_delivery_company:"trunkrs"}, // Convert the paymentData.data,
+        metadata: {...sub.data,_delivery_date:date,_payment_method_title : "Subscription",_delivery_company:"trunkrs",
+          _order_total:parseFloat(sub.pointsUsed/10).toFixed(2),
+          _order_shipping:findPriceByPoints(sub.pointsPerCycle, sub.frequency).toFixed(2) < 100 ? "5.74" : "0.00",
+          _order_shipping_tax:findPriceByPoints(sub.pointsPerCycle, sub.frequency).toFixed(2) < 100 ? "1.21" : "0.00",
+          _order_tax: (totalPrice - (totalPrice / (1 + 0.09))).toFixed(2)
+        }, // Convert the paymentData.data,
         deliveryDate: date,
         createdAt: DateTime.now().setZone('Europe/Amsterdam').toISO(),
         status: 'subscription',
@@ -389,6 +394,7 @@ async function processPointDeliveries(date) {
         
         const orderData = await getDB().collection("orders").findOne({ _id: orderResult.insertedId });
         await trackPlacedRecurringSubscriptionOrder(orderData);
+        await trackSubscriptionPlacedOrder(orderData);
         // Prepare parcel data for SendCloud
         const parcelData = {
           parcel: {
@@ -1335,18 +1341,23 @@ exports.startSubscription = async (req, res) => {
           }
         }
       );
-      
+     
+      const totalPrice=parseFloat(pointsUsed/10)- (findPriceByPoints(paymentData.pointsPerCycle, paymentData.frequency).toFixed(2) < 100 ? 6.95 : 0.00) 
       // Create initial order
       const orderResult = await getDB().collection("orders").insertOne({
         user_id: userId,
         subscriptionId: paymentData._id,
         items: items,
         pointsUsed: parseInt(pointsUsed),
-        metadata: {...paymentData.data,_delivery_date:startDate,_payment_method_title : "Subscription",_delivery_company:"trunkrs"}, // Convert the paymentData.data,
+        metadata: {...paymentData.data,_delivery_date:startDate,_payment_method_title : "Subscription",_delivery_company:"trunkrs",_order_total:parseFloat(pointsUsed/10).toFixed(2),
+          _order_shipping:findPriceByPoints(paymentData.pointsPerCycle, paymentData.frequency).toFixed(2) < 100 ? "5.74" : "0.00",
+          _order_shipping_tax:findPriceByPoints(paymentData.pointsPerCycle, paymentData.frequency).toFixed(2) < 100 ? "1.21" : "0.00",
+          _order_tax: (totalPrice - (totalPrice / (1 + 0.09))).toFixed(2)
+        }, // Convert the paymentData.data,
         deliveryDate: startDate,
         createdAt: DateTime.now().setZone('Europe/Amsterdam').toISO(),
         status: 'subscription',
-        total:parseFloat(pointsUsed/10).toString()
+        total:parseFloat(pointsUsed/10).toFixed(2)
       });
       try {
         const username = process.env.SENDCLOUD_API_USERNAME;
@@ -1357,6 +1368,7 @@ exports.startSubscription = async (req, res) => {
         
         const orderData = await getDB().collection("orders").findOne({ _id: orderResult.insertedId });
         await trackPlacedRecurringSubscriptionOrder(orderData);
+        await trackSubscriptionPlacedOrder(orderData);
         // Prepare parcel data for SendCloud
         const parcelData = {
           parcel: {

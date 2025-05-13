@@ -40,7 +40,8 @@ const trackEventController = async (req, res) => {
           $country_code: orderData.metadata._billing_country,
           $state: orderData.metadata._billing_address_1,
           $zip_code: orderData.metadata._billing_postcode,
-          $is_new_customer: orderData.user_id ? false : true, // Important
+          // $is_new_customer: orderData.user_id ? false : true, // Important
+          $sales_channel_type: "web",
         },
         profile_properties: {
           $first_name: orderData.metadata._billing_first_name,

@@ -216,9 +216,27 @@ exports.getAllProducts = async (req, res) => {
     const category = req.query.category;
 
     // Define the filter
-    const filter = category && category !== 'Alle' 
-      ? { status: "publish", categories: category } 
-      : { status: "publish" };
+    let filter;
+    if (category === 'Smakelijke') {
+      // Special case: When "Smakelijke" is selected, return products from both Smakelijke categories
+      filter = { 
+        status: "publish", 
+        categories: { 
+          $in: ["Smakelijke maaltijden", "Smakelijke pakketten"] 
+        } 
+      };
+    } else if (category && category !== 'Alle') {
+      // When specific category is selected
+      filter = { status: "publish", categories: category };
+    } else {
+      // When "Alle" is selected or no category is provided, exclude specific categories
+      filter = { 
+        status: "publish", 
+        categories: { 
+          $nin: ["Smakelijke maaltijden", "Smakelijke pakketten"] 
+        } 
+      };
+    }
 
     // Define the projection to return only the required fields
     const projection = {
@@ -243,7 +261,8 @@ exports.getAllProducts = async (req, res) => {
         _yith_wcpb_bundle_data: 1,
         _freezer: 1,
         allergenen: 1,
-        badges: 1
+        badges: 1,
+        weight_options: 1
       },
     };
 
@@ -291,9 +310,14 @@ exports.getSingleProduct = async (req, res) => {
     const { productName } = req.params; // Assuming you pass the ID as a parameter in the URL
     const productsCollection = getDB().collection('products');
 
-    // Input from the URL
-    // Normalize the input by replacing spaces/hyphens and trimming
-    
+    // First try to find by product_slug directly
+    let product = await productsCollection.findOne({
+      "product_slug": productName,
+      "status": "publish"
+    });
+
+    // If no product found by slug, continue with existing search methods
+    if (!product) {
     // Create regexPattern1 to handle hyphens, spaces, and en-dashes
     const regexPattern1 = new RegExp(
       "^" + productName
@@ -304,8 +328,8 @@ exports.getSingleProduct = async (req, res) => {
     // Create regexPattern2 to allow hyphens to match any character in between words (more flexible)
     const regexPattern2 = new RegExp(productName.replace(/-/g, '.*'), 'i'); // Replace hyphens with '.*' and make case-insensitive
     
-    // First, try searching using regexPattern1
-    let product = await productsCollection.findOne({
+      // Try searching using regexPattern1
+      product = await productsCollection.findOne({
       "name": regexPattern1,
       "status": "publish"
     });
@@ -316,6 +340,7 @@ exports.getSingleProduct = async (req, res) => {
         "name": regexPattern2,
         "status": "publish"
       });
+      }
     }
     
     if (!product) {

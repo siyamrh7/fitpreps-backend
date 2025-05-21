@@ -12,7 +12,8 @@ const addUserToKlaviyo = require('./klaviyoController');
 Paynl.Config.setApiToken(process.env.PAY_NL_API_TOKEN);   // Replace with your API token
 Paynl.Config.setServiceId(process.env.PAY_NL_SERVICE_ID);   // Replace with your service ID
 // HTML template
-
+const nonFrozenContract =110753
+const frozenContract = 97220
 // Create order API route
 exports.createOrder = async (req, res) => {
   try {
@@ -50,6 +51,7 @@ exports.createOrder = async (req, res) => {
           shipment: {
             id: orderData.metadata.deliveryMethod
           },
+          contract:frozenContract,
           weight: 1.000,
           order_number: orderData._id,
           total_order_value_currency: "EUR",
@@ -421,6 +423,7 @@ exports.checkPayment = async (req, res) => {
         shipment: {
           id: orderData.metadata.deliveryMethod
         },
+        contract:frozenContract,
         weight: 1.000,
         order_number: orderData._id,
         total_order_value_currency: "EUR",

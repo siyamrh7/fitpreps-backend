@@ -7,6 +7,8 @@ const { DateTime } = require('luxon');
 const emailQueue = require('../controllers/emailQueue');
 const { trackStartedSubscription, trackPlacedRecurringSubscriptionOrder ,trackCancelledSubscription, trackSubscriptionPlacedOrder} = require('./subscriptionEventsController');
 
+const nonFrozenContract =110753
+const frozenContract = 97220
 // Helper function for btoa (base64 encoding) in Node.js
 function btoa(string) {
   return Buffer.from(string).toString('base64');
@@ -410,6 +412,7 @@ async function processPointDeliveries(date) {
             shipment: {
               id: 2801  // Default delivery method if not specified
             },
+            contract:frozenContract,
             weight: 1.000,
             order_number: orderData._id.toString(),
             total_order_value_currency: "EUR",
@@ -1384,6 +1387,7 @@ exports.startSubscription = async (req, res) => {
             shipment: {
               id: 2801  // Default delivery method if not specified
             },
+            contract:frozenContract,
             weight: 1.000,
             order_number: orderData._id.toString(),
             total_order_value_currency: "EUR",

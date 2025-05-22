@@ -217,7 +217,10 @@ exports.getAllProducts = async (req, res) => {
 
     // Define the filter
     let filter;
-    if (category === 'Smakelijke') {
+    if (category === 'admin') {
+      // Admin case: Return all products with status "publish"
+      filter = { status: "publish" };
+    } else if (category === 'Smakelijke') {
       // Special case: When "Smakelijke" is selected, return products from both Smakelijke categories
       filter = { 
         status: "publish", 

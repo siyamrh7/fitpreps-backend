@@ -154,7 +154,8 @@ exports.getAllSupplements = async (req, res) => {
         _yith_wcpb_bundle_data: 1,
         _freezer: 1,
         allergenen: 1,
-        badges: 1
+        badges: 1,
+        _discount_price: 1,
       },
     };
 

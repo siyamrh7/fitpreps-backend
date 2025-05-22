@@ -266,7 +266,7 @@ exports.getAllProducts = async (req, res) => {
         allergenen: 1,
         badges: 1,
         weight_options: 1,
-        _discount_price: 1,
+        
       },
     };
 

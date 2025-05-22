@@ -51,7 +51,7 @@ exports.createOrder = async (req, res) => {
           shipment: {
             id: orderData.metadata.deliveryMethod
           },
-          contract:frozenContract,
+          contract:orderData.metadata.contracts ? nonFrozenContract : frozenContract,
           weight: 1.000,
           order_number: orderData._id,
           total_order_value_currency: "EUR",
@@ -124,8 +124,9 @@ exports.createOrder = async (req, res) => {
 
       // Update the order in your database
       const productsCollection = getDB().collection('products');
+      const supplementsCollection = getDB().collection('supplements');
 
-      // Build bulk operations
+      // Build bulk operations for products
       const bulkOperations = orderData.items.flatMap((item) => {
         const productName = item.order_item_name; // Name of the product
         const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
@@ -219,6 +220,86 @@ exports.createOrder = async (req, res) => {
           };
         }
       });
+
+      // Build bulk operations for supplements
+      const supplementBulkOperations = orderData.items.flatMap((item) => {
+        // Skip if not a supplement
+        if (!item.meta?.categories?.includes('Supplements')) {
+          return [];
+        }
+        
+        const supplementName = item.order_item_name; // Name of the supplement
+        const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
+        const supplementId = item.meta._id; // ID of the supplement
+
+        // Check if the item is a bundle
+        if (item.meta._cartstamp) {
+          try {
+            const bundleData = Object.values(unserialize(item.meta._cartstamp));
+            
+            // Create operations for each supplement in the bundle
+            return bundleData
+              .filter(bundleItem => bundleItem.supplement_id) // Only process items with supplement_id
+              .map((bundleItem) => ({
+                updateOne: {
+                  filter: {
+                    supplementId: parseInt(bundleItem.supplement_id), // Filter by supplement ID
+                    $expr: { $gte: [{ $toInt: "$metadata._stock" }, parseInt(bundleItem.bp_min_qty)] }, // Ensure sufficient stock
+                  },
+                  update: [
+                    {
+                      $set: {
+                        "metadata._stock": {
+                          $toString: {
+                            $subtract: [{ $toInt: "$metadata._stock" }, parseInt(bundleItem.bp_min_qty) * quantityToReduce],
+                          },
+                        },
+                        "metadata.total_sales": {
+                          $toString: {
+                            $add: [{ $toInt: "$metadata.total_sales" || "0" }, parseInt(bundleItem.bp_min_qty) * quantityToReduce],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              }));
+          } catch (error) {
+            console.error("Error processing supplement bundle:", error);
+            return [];
+          }
+        } else {
+          console.log(supplementName)
+          // If it's a single supplement
+          return {
+            updateOne: {
+              filter: {
+                $or: [
+                  { name: supplementName } // Fallback to name if ID doesn't match
+                ],
+                $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
+              },
+              update: [
+                {
+                  $set: {
+                    "metadata._stock": {
+                      $toString: {
+                        $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce],
+                      },
+                    },
+                    "metadata.total_sales": {
+                      $toString: {
+                        $add: [{ $toInt: "$metadata.total_sales" || "0" }, quantityToReduce],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          };
+        }
+      }).filter(Boolean); // Remove any empty entries
+
       const usersCollection = getDB().collection('users');
       const user = await usersCollection.findOne({ _id: new ObjectId(orderData.user_id) });
       if (user) {
@@ -281,6 +362,16 @@ exports.createOrder = async (req, res) => {
       //update stock action
       const modifiedProducts = await productsCollection.bulkWrite(bulkOperations);
       console.log(modifiedProducts);
+      
+      // Update supplement stock if there are any supplement operations
+      if (supplementBulkOperations.length > 0) {
+        try {
+          const modifiedSupplements = await supplementsCollection.bulkWrite(supplementBulkOperations);
+          console.log("Supplements stock updated:", modifiedSupplements);
+        } catch (error) {
+          console.error("Error updating supplements stock:", error);
+        }
+      }
 
 
 
@@ -423,7 +514,7 @@ exports.checkPayment = async (req, res) => {
         shipment: {
           id: orderData.metadata.deliveryMethod
         },
-        contract:frozenContract,
+        contract:orderData.metadata.contracts ? nonFrozenContract : frozenContract,
         weight: 1.000,
         order_number: orderData._id,
         total_order_value_currency: "EUR",
@@ -728,6 +819,96 @@ exports.checkPayment = async (req, res) => {
           }
           //update stock action
           await productsCollection.bulkWrite(bulkOperations);
+          
+          // Build bulk operations for supplements
+      const supplementBulkOperations = orderData.items.flatMap((item) => {
+        // Skip if not a supplement
+        if (!item.meta?.categories?.includes('Supplements')) {
+          return [];
+        }
+        
+        const supplementName = item.order_item_name; // Name of the supplement
+        const quantityToReduce = item.meta._qty; // Quantity to decrement for this item
+        const supplementId = item.meta._id; // ID of the supplement
+
+        // Check if the item is a bundle
+        if (item.meta._cartstamp) {
+          try {
+            const bundleData = Object.values(unserialize(item.meta._cartstamp));
+            
+            // Create operations for each supplement in the bundle
+            return bundleData
+              .filter(bundleItem => bundleItem.supplement_id) // Only process items with supplement_id
+              .map((bundleItem) => ({
+                updateOne: {
+                  filter: {
+                    supplementId: parseInt(bundleItem.supplement_id), // Filter by supplement ID
+                    $expr: { $gte: [{ $toInt: "$metadata._stock" }, parseInt(bundleItem.bp_min_qty)] }, // Ensure sufficient stock
+                  },
+                  update: [
+                    {
+                      $set: {
+                        "metadata._stock": {
+                          $toString: {
+                            $subtract: [{ $toInt: "$metadata._stock" }, parseInt(bundleItem.bp_min_qty) * quantityToReduce],
+                          },
+                        },
+                        "metadata.total_sales": {
+                          $toString: {
+                            $add: [{ $toInt: "$metadata.total_sales" || "0" }, parseInt(bundleItem.bp_min_qty) * quantityToReduce],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              }));
+          } catch (error) {
+            console.error("Error processing supplement bundle:", error);
+            return [];
+          }
+        } else {
+          console.log(supplementName)
+          // If it's a single supplement
+          return {
+            updateOne: {
+              filter: {
+                $or: [
+                  { name: supplementName } // Fallback to name if ID doesn't match
+                ],
+                $expr: { $gte: [{ $toInt: "$metadata._stock" }, quantityToReduce] }, // Ensure sufficient stock
+              },
+              update: [
+                {
+                  $set: {
+                    "metadata._stock": {
+                      $toString: {
+                        $subtract: [{ $toInt: "$metadata._stock" }, quantityToReduce],
+                      },
+                    },
+                    "metadata.total_sales": {
+                      $toString: {
+                        $add: [{ $toInt: "$metadata.total_sales" || "0" }, quantityToReduce],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          };
+        }
+      }).filter(Boolean); // Remove any empty entries
+
+          // Update supplement stock if there are any supplement operations
+          if (supplementBulkOperations.length > 0) {
+            try {
+              const supplementsCollection = getDB().collection('supplements');
+              const modifiedSupplements = await supplementsCollection.bulkWrite(supplementBulkOperations);
+              console.log("Supplements stock updated:", modifiedSupplements);
+            } catch (error) {
+              console.error("Error updating supplements stock:", error);
+            }
+          }
 
 
 
@@ -1383,6 +1564,11 @@ exports.getAnalytics = async (req, res) => {
                 }
               } 
             },
+            totalSupplementsSales: {
+              $sum: {
+                $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 }
+              }
+            },
             totalOrders: { $sum: 1 },
             totalTaxes: {
               $sum: {
@@ -1417,6 +1603,7 @@ exports.getAnalytics = async (req, res) => {
 
       return {
         totalSales: metrics[0]?.totalSales || 0,
+        totalSupplementsSales: metrics[0]?.totalSupplementsSales || 0,
         totalOrders: metrics[0]?.totalOrders || 0,
         totalTaxes: metrics[0]?.totalTaxes || 0,
         totalProductTaxes: metrics[0]?.totalProductTaxes || 0,
@@ -1435,6 +1622,18 @@ exports.getAnalytics = async (req, res) => {
           _id: null,
           totalSales: { 
             $sum: { $convert: { input: { $ifNull: ["$total", "0"] }, to: "double", onError: 0 } }
+          },
+        },
+      },
+    ]).toArray();
+
+    const totalSupplementsSales = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalSupplementsSales: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } }
           },
         },
       },
@@ -1740,6 +1939,7 @@ exports.getAnalytics = async (req, res) => {
     // Prepare the analytics response object
     const analytics = {
       totalSales: totalSales[0]?.totalSales || 0,
+      totalSupplementsSales: totalSupplementsSales[0]?.totalSupplementsSales || 0,
       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
@@ -1752,6 +1952,7 @@ exports.getAnalytics = async (req, res) => {
       hourlyOrders,
       total: {
         totalSales: totalSales[0]?.totalSales || 0,
+        totalSupplementsSales: totalSupplementsSales[0]?.totalSupplementsSales || 0,
         completedOrders: totalOrders[0]?.totalOrders || 0,
         totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
         totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
@@ -1759,6 +1960,7 @@ exports.getAnalytics = async (req, res) => {
       },
       monthly: {
         totalSales: monthlyData.totalSales,
+        totalSupplementsSales: monthlyData.totalSupplementsSales,
         completedOrders: monthlyData.totalOrders,
         totalTaxes: monthlyData.totalTaxes,
         totalProductTaxes: monthlyData.totalProductTaxes,
@@ -1769,6 +1971,7 @@ exports.getAnalytics = async (req, res) => {
       },
       weekly: {
         totalSales: weeklyData.totalSales,
+        totalSupplementsSales: weeklyData.totalSupplementsSales,
         completedOrders: weeklyData.totalOrders,
         totalTaxes: weeklyData.totalTaxes,
         totalProductTaxes: weeklyData.totalProductTaxes,
@@ -1779,6 +1982,7 @@ exports.getAnalytics = async (req, res) => {
       },
       yearly: {
         totalSales: yearlyData.totalSales,
+        totalSupplementsSales: yearlyData.totalSupplementsSales,
         completedOrders: yearlyData.totalOrders,
         totalTaxes: yearlyData.totalTaxes,
         totalProductTaxes: yearlyData.totalProductTaxes,
@@ -1789,6 +1993,7 @@ exports.getAnalytics = async (req, res) => {
       },
       today: {
         totalSales: todayData.totalSales,
+        totalSupplementsSales: todayData.totalSupplementsSales,
         completedOrders: todayData.totalOrders,
         totalTaxes: todayData.totalTaxes,
         totalProductTaxes: todayData.totalProductTaxes,
@@ -1803,6 +2008,7 @@ exports.getAnalytics = async (req, res) => {
     if (customData) {
       analytics.custom = {
         totalSales: customData.totalSales,
+        totalSupplementsSales: customData.totalSupplementsSales,
         completedOrders: customData.totalOrders,
         totalTaxes: customData.totalTaxes,
         totalProductTaxes: customData.totalProductTaxes,

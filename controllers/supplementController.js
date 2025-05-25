@@ -146,6 +146,7 @@ exports.getAllSupplements = async (req, res) => {
       metadata: {
         _price: 1,
         _stock: 1,
+        dose: 1,
         total_sales: 1,
         nutretions_data: 1,
         _product_background_color:1,
@@ -280,5 +281,331 @@ exports.deleteSupplementById = async (req, res) => {
   } catch (error) {
     console.log(error)
     res.status(400).json({ message: 'Error deleting supplement', error });
+  }
+};
+
+exports.getSupplementRevenue = async (req, res) => {
+  try {
+    const ordersCollection = getDB().collection('orders');
+    
+    // Extract date range from request if provided
+    const { startDate, endDate ,password} = req.query;
+    if(password !== 'rayisgreat'){
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const hasCustomDateRange = startDate && endDate;
+
+    // Helper function to calculate date ranges
+    const getDateRange = (type) => {
+      const now = new Date();
+      const start = new Date(now);
+
+      switch (type) {
+        case 'monthly':
+          start.setDate(1); // Set to the first day of the month
+          break;
+        case 'weekly':
+          start.setDate(now.getDate() - now.getDay() + 1); // Set to Monday of the current week
+          break;
+        case 'yearly':
+          start.setMonth(0, 1); // Set to January 1st of the current year
+          break;
+        case 'today':
+          start.setHours(0, 0, 0, 0); // Set to midnight (start of the day)
+          break;
+        case 'custom':
+          // Use the provided custom date range
+          return {
+            start: new Date(startDate),
+            end: new Date(endDate)
+          };
+        default:
+          throw new Error('Invalid date range type');
+      }
+
+      return { start, end: now };
+    };
+
+    // Aggregation function for supplement sales
+    const aggregateSupplementSales = async (start, end) => {
+      const result = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+          },
+        },
+        {
+          $match: {
+            status: 'completed',
+            createdAtDate: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSupplementsSales: {
+              $sum: {
+                $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 }
+              }
+            },
+            totalOrders: { $sum: 1 },
+            supplementsOrders: {
+              $sum: {
+                $cond: [
+                  { $gt: [{ $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } }, 0] },
+                  1,
+                  0
+                ]
+              }
+            }
+          },
+        },
+      ]).toArray();
+
+      return {
+        totalSupplementsSales: result[0]?.totalSupplementsSales || 0,
+        totalOrders: result[0]?.totalOrders || 0,
+        supplementsOrders: result[0]?.supplementsOrders || 0,
+      };
+    };
+
+    // Fetch overall supplements revenue data
+    const totalSupplementsSales = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalSupplementsSales: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } }
+          },
+          totalOrders: { $sum: 1 },
+          supplementsOrders: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } }, 0] },
+                1,
+                0
+              ]
+            }
+          }
+        },
+      },
+    ]).toArray();
+
+    // Aggregation for monthly supplements revenue trend
+    const aggregateMonthlySupplementsRevenue = async () => {
+      const result = await ordersCollection.aggregate([
+        {
+          $match: { status: 'completed' }, 
+        },
+        {
+          $project: {
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            year: { 
+              $year: { 
+                $cond: {
+                  if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                  then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                  else: "$createdAt"
+                }
+              } 
+            },
+            month: { 
+              $month: { 
+                $cond: {
+                  if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                  then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                  else: "$createdAt"
+                }
+              } 
+            },
+            supplementsTotalAsNumber: { 
+              $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } 
+            },
+          },
+        },
+        {
+          $group: {
+            _id: { year: "$year", month: "$month" },
+            totalSupplementsSales: { $sum: "$supplementsTotalAsNumber" },
+          },
+        },
+        {
+          $sort: { "_id.year": 1, "_id.month": 1 },
+        },
+      ]).toArray();
+
+      // Map the result to return it as an array of totals for each month
+      const monthlySupplementsRevenue = Array(12).fill(0); // Initialize array with 12 months
+
+      result.forEach(item => {
+        if (item._id && item._id.month) {
+          const monthIndex = item._id.month - 1; // MongoDB month is 1-based, array is 0-based
+          if (monthIndex >= 0 && monthIndex < 12) {
+            monthlySupplementsRevenue[monthIndex] = item.totalSupplementsSales;
+          }
+        }
+      });
+
+      return monthlySupplementsRevenue;
+    };
+
+    // Aggregation for daily supplements revenue trend (last 30 days)
+    const aggregateDailySupplementsRevenue = async () => {
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      // Generate an array of dates for the last 30 days
+      const last30Days = [];
+      for (let i = 0; i < 30; i++) {
+        const day = new Date(thirtyDaysAgo);
+        day.setDate(thirtyDaysAgo.getDate() + i);
+        last30Days.push(day.toISOString().split('T')[0]);
+      }
+
+      const result = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: { 
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            supplementsTotalAsNumber: { 
+              $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } 
+            },
+          },
+        },
+        {
+          $match: {
+            status: 'completed',
+            createdAtDate: {
+              $gte: thirtyDaysAgo,
+              $lte: today,
+            },
+          },
+        },
+        {
+          $project: {
+            createdAtDate: 1,
+            supplementsTotalAsNumber: 1,
+          },
+        },
+        {
+          $group: {
+            _id: { createdAtDate: { $dateToString: { format: "%Y-%m-%d", date: "$createdAtDate", onNull: "1970-01-01" } } },
+            totalSupplementsSales: { $sum: "$supplementsTotalAsNumber" },
+          },
+        },
+        {
+          $sort: { "_id.createdAtDate": 1 },
+        },
+      ]).toArray();
+
+      // Initialize an array for the last 30 days with zeros
+      const dailySupplementsRevenue = Array(30).fill(0);
+
+      // Populate the dailySupplementsRevenue array with data from the result
+      result.forEach(item => {
+        if (item._id && item._id.createdAtDate) {
+          const index = last30Days.indexOf(item._id.createdAtDate);
+          if (index >= 0) {
+            dailySupplementsRevenue[index] = item.totalSupplementsSales;
+          }
+        }
+      });
+
+      return dailySupplementsRevenue;
+    };
+
+    // Date ranges for monthly, weekly, yearly, and today
+    const { start: startOfMonth, end: endOfMonth } = getDateRange('monthly');
+    const { start: startOfWeek, end: endOfWeek } = getDateRange('weekly');
+    const { start: startOfYear, end: endOfYear } = getDateRange('yearly');
+    const { start: startOfToday, end: endOfToday } = getDateRange('today');
+    
+    // Get custom date range data if provided
+    let customData = null;
+    if (hasCustomDateRange) {
+      const { start: customStart, end: customEnd } = getDateRange('custom');
+      customData = await aggregateSupplementSales(customStart, customEnd);
+    }
+
+    const monthlyData = await aggregateSupplementSales(startOfMonth, endOfMonth);
+    const weeklyData = await aggregateSupplementSales(startOfWeek, endOfWeek);
+    const yearlyData = await aggregateSupplementSales(startOfYear, endOfYear);
+    const todayData = await aggregateSupplementSales(startOfToday, endOfToday);
+
+    // Fetch monthly and daily trends
+    const monthlySupplementsRevenue = await aggregateMonthlySupplementsRevenue();
+    const dailySupplementsRevenue = await aggregateDailySupplementsRevenue();
+
+    // Prepare the supplements revenue response object
+    const supplementsRevenue = {
+      totalSupplementsSales: totalSupplementsSales[0]?.totalSupplementsSales || 0,
+    
+      supplementsOrders: totalSupplementsSales[0]?.supplementsOrders || 0,
+      monthlySupplementsRevenue,
+      dailySupplementsRevenue,
+      total: {
+        totalSupplementsSales: totalSupplementsSales[0]?.totalSupplementsSales || 0,
+        
+        supplementsOrders: totalSupplementsSales[0]?.supplementsOrders || 0,
+      },
+      monthly: {
+        totalSupplementsSales: monthlyData.totalSupplementsSales,
+      
+        supplementsOrders: monthlyData.supplementsOrders,
+      },
+      weekly: {
+        totalSupplementsSales: weeklyData.totalSupplementsSales,
+       
+        supplementsOrders: weeklyData.supplementsOrders,
+      },
+      yearly: {
+        totalSupplementsSales: yearlyData.totalSupplementsSales,
+        
+        supplementsOrders: yearlyData.supplementsOrders,
+      },
+      today: {
+        totalSupplementsSales: todayData.totalSupplementsSales,
+       
+        supplementsOrders: todayData.supplementsOrders,
+      },
+    };
+    
+    // Add custom date range data if available
+    if (customData) {
+      supplementsRevenue.custom = {
+        totalSupplementsSales: customData.totalSupplementsSales,
+        totalOrders: customData.totalOrders,
+        supplementsOrders: customData.supplementsOrders,
+        dateRange: {
+          startDate,
+          endDate
+        }
+      };
+    }
+
+    // Send the supplements revenue response
+    res.status(200).json(supplementsRevenue);
+  } catch (error) {
+    console.error("Error fetching supplements revenue:", error);
+    res.status(400).json({ message: 'Error fetching supplements revenue', error: error.toString() });
   }
 }; 

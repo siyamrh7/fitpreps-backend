@@ -265,6 +265,7 @@ exports.getAllProducts = async (req, res) => {
         _freezer: 1,
         allergenen: 1,
         badges: 1,
+        cost_price: 1,
         weight_options: 1,
         
       },

@@ -2091,3 +2091,112 @@ exports.getSubscriptionById = async (req, res) => {
   }
 };
 
+/**
+ * Manually charge a subscription from admin panel
+ */
+exports.manualChargeSubscription = async (req, res) => {
+  try {
+    const { subscriptionId } = req.body;
+    
+    if (!subscriptionId || !ObjectId.isValid(subscriptionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription ID'
+      });
+    }
+    
+    // Find subscription
+    const subscription = await getDB().collection('subscriptions').findOne({
+      _id: new ObjectId(subscriptionId),
+      paymentStatus:"paid"
+    });
+    
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: 'Subscription not found'
+      });
+    }
+    
+    try {
+      // Create a payment through Mollie
+      const payment = await mollieClient.payments.create({
+        amount: {
+          currency: "EUR",
+          value: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2),
+        },
+        description: `Manual Subscription Payment - ${subscription._id}`,
+        customerId: subscription.mollieCustomerId,
+        sequenceType: "recurring",
+        webhookUrl: `${process.env.API_BASE_URL}/api/subscription/payment-webhook`,
+        metadata: {
+          subscriptionId: subscription._id.toString(),
+          userId: subscription.userId.toString(),
+          type: 'manual-subscription-payment'
+        }
+      });
+      
+      const now = DateTime.now().setZone('Europe/Amsterdam');
+      
+      // Update subscription with payment information
+      await getDB().collection("subscriptions").updateOne(
+        { _id: subscription._id },
+        { 
+          $set: { 
+            currentPaymentId: payment.id,
+            lastPaymentAttemptDate: now.toJSDate(),
+            updatedAt: now.toJSDate(),
+            
+          },
+          $push: { 
+            paymentHistory: {
+              paymentId: payment.id,
+              amount: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2),
+              date: now.toJSDate(),
+              status: payment.status,
+              type: 'manual-payment'
+            },
+            activity: {
+              type: 'manual_payment_initiated',
+              date: now.toJSDate(),
+              adminInitiated: true,
+              paymentId: payment.id
+            }
+          }
+        }
+      );
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Manual payment initiated successfully',
+        paymentId: payment.id,
+        amount: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2)
+      });
+      
+    } catch (error) {
+      console.error(`Error processing manual payment for subscription ${subscription._id}: ${error.message}`);
+      
+      // Log error to database
+      await getDB().collection("errors").insertOne({
+        type: "manualPaymentProcessingError",
+        subscriptionId: subscription._id,
+        userId: subscription.userId,
+        error: error.message,
+        timestamp: DateTime.now().setZone('Europe/Amsterdam').toISO()
+      });
+      
+      return res.status(500).json({
+        success: false,
+        error: `Failed to process payment: ${error.message}`
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error initiating manual payment:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to initiate manual payment'
+    });
+  }
+};
+

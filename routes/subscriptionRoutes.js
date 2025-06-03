@@ -39,5 +39,6 @@ router.post('/resume', subscriptionController.resumeSubscription);
 // Admin management
 // router.post('/update-charge-date', authenticateAdmin, subscriptionController.updateNextChargeDate);
 // router.post('/update-amount', authenticateAdmin, subscriptionController.updateSubscriptionAmount);
+router.put('/manual-charge', authenticateAdmin, subscriptionController.manualChargeSubscription);
 
 module.exports = router;

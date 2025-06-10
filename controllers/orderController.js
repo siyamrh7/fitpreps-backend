@@ -351,7 +351,12 @@ exports.createOrder = async (req, res) => {
       }
       if (user) {
         // Deduct points from user account
-        const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + parseInt(orderData.total) - redeemPoints;
+        // const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + parseInt(orderData.total) - redeemPoints;
+        const rewardPoints = parseInt(user?.metadata?.woocommerce_reward_points) || 0;
+            const orderTotal = parseInt(orderData?.total) || 0;
+            const isBusiness = discountsData?.isBusiness;
+
+            const updatedPoints = rewardPoints - redeemPoints + (isBusiness ? 0 : orderTotal);
         await usersCollection.updateOne(
           { _id: new ObjectId(orderData.user_id) },
           { $set: { "metadata.woocommerce_reward_points": parseInt(updatedPoints).toString() } }
@@ -809,7 +814,12 @@ exports.checkPayment = async (req, res) => {
           }
           if (user) {
             // Deduct points from user account
-            const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) + parseInt(orderData.total) - redeemPoints;
+            // const updatedPoints = parseInt(user.metadata.woocommerce_reward_points) - redeemPoints + (discountsData?.isBusiness ? 0 : parseInt(orderData.total));
+            const rewardPoints = parseInt(user?.metadata?.woocommerce_reward_points) || 0;
+            const orderTotal = parseInt(orderData?.total) || 0;
+            const isBusiness = discountsData?.isBusiness;
+
+            const updatedPoints = rewardPoints - redeemPoints + (isBusiness ? 0 : orderTotal);
             await usersCollection.updateOne(
               { _id: new ObjectId(orderData.user_id) },
               { $set: { "metadata.woocommerce_reward_points": parseInt(updatedPoints).toString() } }

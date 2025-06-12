@@ -7,7 +7,7 @@ const { unserialize } = require('php-serialize');
 var Paynl = require('paynl-sdk');
 const emailQueue = require('./emailQueue');
 const addUserToKlaviyo = require('./klaviyoController');
-
+const { trackPlacedOrder } = require('./eventsTrackController');
 // Configure Pay.nl with your credentials
 Paynl.Config.setApiToken(process.env.PAY_NL_API_TOKEN);   // Replace with your API token
 Paynl.Config.setServiceId(process.env.PAY_NL_SERVICE_ID);   // Replace with your service ID
@@ -657,8 +657,8 @@ exports.checkPayment = async (req, res) => {
           }
           );
           // Fetch data from SendCloud API
-          const response = await fetch(url, options);
-
+          await trackPlacedOrder(orderData);
+          const response = await fetch(url, options);          
           // Handle response
           if (!response.ok) {
             // Log and handle HTTP errors

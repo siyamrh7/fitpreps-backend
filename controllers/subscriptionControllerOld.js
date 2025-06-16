@@ -9,7 +9,7 @@ const cron = require('node-cron');
 
 cron.schedule("* * * * *", async () => {
   const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD
-console.log(today)
+
   // Get all subscriptions that should be charged today
   // const subscriptions = await db.getActiveSubscriptions(today);
   const subscriptions = await getDB()

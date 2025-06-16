@@ -687,7 +687,7 @@ async function processSubscriptionPayments(date) {
  */
 exports.purchasePoints = async (req, res) => {
   try {
-    const { userId, totalPoints, frequency, amount, data ,startDate} = req.body;
+    const { userId, totalPoints, frequency, amount, data ,startDate,type} = req.body;
     
     if (!userId || !totalPoints || !frequency || !amount) {
       return res.status(400).json({
@@ -795,6 +795,7 @@ exports.purchasePoints = async (req, res) => {
             pointsPerCycle: parseInt(totalPoints),
             amountPerCycle: parseFloat(amount),
             frequency: frequency,
+            type:type || null,
             // paymentStatus: payment.status,
             updatedAt: now.toJSDate(),
             currentPaymentId: payment.id,
@@ -838,6 +839,7 @@ exports.purchasePoints = async (req, res) => {
         mollieCustomerId: mollieCustomerId,
         pointsPerCycle: parseInt(totalPoints),
         pointsUsed: 0,
+        type:type || null,
         amountPerCycle: parseFloat(amount),
         frequency: frequency,
         status: 'inactive',
@@ -2091,7 +2093,7 @@ exports.getSubscriptionById = async (req, res) => {
   }
 };
 
-/**
+/* 
  * Manually charge a subscription from admin panel
  */
 exports.manualChargeSubscription = async (req, res) => {

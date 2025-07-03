@@ -1701,11 +1701,11 @@ exports.resumeSubscription = async (req, res) => {
       customerId: subscription.mollieCustomerId,
       amount: {
         currency: 'EUR',
-        value: subscription.amountPerCycle.toFixed(2)
+        value: findPriceByPoints(subscription.pointsPerCycle, subscription.frequency).toFixed(2)
       },
       description: `Purchase ${subscription.pointsPerCycle} points and ${subscription ? 'modify' : 'start'} subscription`,
-      redirectUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`,
-      webhookUrl: `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
+      // redirectUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`,
+      webhookUrl: `${process.env.API_BASE_URL}/api/subscription/payment-webhook`,
       sequenceType: 'recurring',
       metadata: paymentMetadata
     });
@@ -1750,10 +1750,10 @@ exports.resumeSubscription = async (req, res) => {
           $push: {
             paymentHistory: {
               paymentId: payment.id,
-              amount: parseFloat(subscription.amountPerCycle),
+              amount: parseFloat(findPriceByPoints(subscription.pointsPerCycle, subscription.frequency)),
               date: now.toJSDate(),
               status: payment.status,
-              type: 'modification'
+              type: 'resume'
             },
             activity: {
               type: 'subscription_resumed',

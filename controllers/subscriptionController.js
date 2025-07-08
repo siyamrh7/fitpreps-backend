@@ -771,7 +771,7 @@ exports.purchasePoints = async (req, res) => {
       },
       description: `Purchase ${totalPoints} points and ${existingSubscription ? 'modify' : 'start'} subscription`,
       redirectUrl: `${process.env.FRONTEND_URI}/subscriptions/payment-success?id=${userId}`,
-      webhookUrl: `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
+      webhookUrl: existingSubscription ? `${process.env.API_BASE_URL}/api/subscription/payment-webhook` : `${process.env.API_BASE_URL}/api/subscription/first-payment-webhook`,
       sequenceType: existingSubscription ? 'recurring' : 'first', // First or recurring based on existing subscription
       metadata: paymentMetadata,
       

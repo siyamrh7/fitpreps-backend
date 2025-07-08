@@ -1597,6 +1597,9 @@ exports.getAnalytics = async (req, res) => {
             totalDiscounts: { 
               $sum: { $convert: { input: { $ifNull: ["$metadata._cart_discount", "0"] }, to: "double", onError: 0 } }
             },
+            totalOrderShipping: { 
+              $sum: { $convert: { input: { $ifNull: ["$metadata._order_shipping", "0"] }, to: "double", onError: 0 } }
+            },
           },
         },
       ]).toArray();
@@ -1619,6 +1622,7 @@ exports.getAnalytics = async (req, res) => {
         totalProductTaxes: metrics[0]?.totalProductTaxes || 0,
         totalShippingTaxes: metrics[0]?.totalShippingTaxes || 0,
         totalDiscounts: metrics[0]?.totalDiscounts || 0,
+        totalOrderShipping: metrics[0]?.totalOrderShipping || 0,
         processingOrders: processingOrders || 0,
         cancelledOrders: cancelledOrders || 0,
       };
@@ -1697,6 +1701,18 @@ exports.getAnalytics = async (req, res) => {
           _id: null,
           totalShippingTaxes: { 
             $sum: { $convert: { input: { $ifNull: ["$metadata._order_shipping_tax", "0"] }, to: "double", onError: 0 } }
+          },
+        },
+      },
+    ]).toArray();
+
+    const totalOrderShipping = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalOrderShipping: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._order_shipping", "0"] }, to: "double", onError: 0 } }
           },
         },
       },
@@ -1954,6 +1970,7 @@ exports.getAnalytics = async (req, res) => {
       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
       totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
       totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
+      totalOrderShipping: totalOrderShipping[0]?.totalOrderShipping || 0,
       totalOrders: totalOrders[0]?.totalOrders || 0,
       processingOrders: processingOrders[0]?.processingOrders || 0, // Total processing order
       totalActiveSubscriptions,
@@ -1966,6 +1983,7 @@ exports.getAnalytics = async (req, res) => {
         completedOrders: totalOrders[0]?.totalOrders || 0,
         totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
         totalShippingTaxes: totalShippingTaxes[0]?.totalShippingTaxes || 0,
+        totalOrderShipping: totalOrderShipping[0]?.totalOrderShipping || 0,
         processingOrders: processingOrders[0]?.processingOrders || 0,
       },
       monthly: {
@@ -1975,6 +1993,7 @@ exports.getAnalytics = async (req, res) => {
         totalTaxes: monthlyData.totalTaxes,
         totalProductTaxes: monthlyData.totalProductTaxes,
         totalShippingTaxes: monthlyData.totalShippingTaxes,
+        totalOrderShipping: monthlyData.totalOrderShipping,
         totalDiscounts: monthlyData.totalDiscounts,
         processingOrders: monthlyData.processingOrders,
         cancelledOrders: monthlyData.cancelledOrders,
@@ -1986,6 +2005,7 @@ exports.getAnalytics = async (req, res) => {
         totalTaxes: weeklyData.totalTaxes,
         totalProductTaxes: weeklyData.totalProductTaxes,
         totalShippingTaxes: weeklyData.totalShippingTaxes,
+        totalOrderShipping: weeklyData.totalOrderShipping,
         totalDiscounts: weeklyData.totalDiscounts,
         processingOrders: weeklyData.processingOrders,
         cancelledOrders: weeklyData.cancelledOrders,
@@ -1997,6 +2017,7 @@ exports.getAnalytics = async (req, res) => {
         totalTaxes: yearlyData.totalTaxes,
         totalProductTaxes: yearlyData.totalProductTaxes,
         totalShippingTaxes: yearlyData.totalShippingTaxes,
+        totalOrderShipping: yearlyData.totalOrderShipping,
         totalDiscounts: yearlyData.totalDiscounts,
         processingOrders: yearlyData.processingOrders,
         cancelledOrders: yearlyData.cancelledOrders,
@@ -2008,6 +2029,7 @@ exports.getAnalytics = async (req, res) => {
         totalTaxes: todayData.totalTaxes,
         totalProductTaxes: todayData.totalProductTaxes,
         totalShippingTaxes: todayData.totalShippingTaxes,
+        totalOrderShipping: todayData.totalOrderShipping,
         totalDiscounts: todayData.totalDiscounts,
         processingOrders: todayData.processingOrders,
         cancelledOrders: todayData.cancelledOrders,
@@ -2023,6 +2045,7 @@ exports.getAnalytics = async (req, res) => {
         totalTaxes: customData.totalTaxes,
         totalProductTaxes: customData.totalProductTaxes,
         totalShippingTaxes: customData.totalShippingTaxes,
+        totalOrderShipping: customData.totalOrderShipping,
         totalDiscounts: customData.totalDiscounts,
         processingOrders: customData.processingOrders,
         cancelledOrders: customData.cancelledOrders,

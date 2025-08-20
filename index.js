@@ -16,6 +16,7 @@ const trackingRoutes = require('./routes/trackingRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const gymwearRoutes = require('./routes/gymwearRoutes');
 
 const uploadSingle = require('./middleware/uploadMiddleware'); // Import the Multer middleware
 const { contactController } = require('./controllers/contactController');
@@ -48,6 +49,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/gymwear', gymwearRoutes);
 
 app.use('/api/track-event', trackingRoutes);
 app.use("/webhook/sendcloud", webhookRoutes);

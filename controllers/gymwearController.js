@@ -155,8 +155,8 @@ exports.getAllGymwear = async (req, res) => {
       createdAt: 1,
       updatedAt: 1,
       metadata: {
-        price: 1,
-        stock: 1,
+        _price: 1,
+        _stock: 1,
         total_sales: 1,
         cost_price: 1,
         meta_title: 1,

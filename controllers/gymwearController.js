@@ -149,6 +149,7 @@ exports.getAllGymwear = async (req, res) => {
       status: 1,
       category: 1,
       color: 1,
+      product_slug: 1,
       sizes: 1,
       thumbnail: 1,
       files: 1,

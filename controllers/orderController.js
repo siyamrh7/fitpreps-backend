@@ -1574,6 +1574,11 @@ exports.getAnalytics = async (req, res) => {
                 }
               } 
             },
+            totalGymwearSales: {
+              $sum: {
+                $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 }
+              }
+            },
             totalSupplementsSales: {
               $sum: {
                 $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 }
@@ -1616,6 +1621,7 @@ exports.getAnalytics = async (req, res) => {
 
       return {
         totalSales: metrics[0]?.totalSales || 0,
+        totalGymwearSales: metrics[0]?.totalGymwearSales || 0,
         totalSupplementsSales: metrics[0]?.totalSupplementsSales || 0,
         totalOrders: metrics[0]?.totalOrders || 0,
         totalTaxes: metrics[0]?.totalTaxes || 0,
@@ -1649,6 +1655,18 @@ exports.getAnalytics = async (req, res) => {
           totalSupplementsSales: { 
             $sum: { $convert: { input: { $ifNull: ["$metadata._supplements_total", "0"] }, to: "double", onError: 0 } }
           },
+        },
+      },
+    ]).toArray();
+
+    const totalGymwearSales = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalGymwearSales: { 
+            $sum: { $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 } }
+          }
         },
       },
     ]).toArray();
@@ -1965,6 +1983,7 @@ exports.getAnalytics = async (req, res) => {
     // Prepare the analytics response object
     const analytics = {
       totalSales: totalSales[0]?.totalSales || 0,
+      totalGymwearSales: totalGymwearSales[0]?.totalGymwearSales || 0,
       totalSupplementsSales: totalSupplementsSales[0]?.totalSupplementsSales || 0,
       totalTaxes: totalTaxes[0]?.totalTaxes || 0,
       totalDiscounts: totalDiscounts[0]?.totalDiscounts || 0,
@@ -1979,6 +1998,7 @@ exports.getAnalytics = async (req, res) => {
       hourlyOrders,
       total: {
         totalSales: totalSales[0]?.totalSales || 0,
+        totalGymwearSales: totalGymwearSales[0]?.totalGymwearSales || 0,
         totalSupplementsSales: totalSupplementsSales[0]?.totalSupplementsSales || 0,
         completedOrders: totalOrders[0]?.totalOrders || 0,
         totalProductTaxes: totalProductTaxes[0]?.totalProductTaxes || 0,
@@ -1988,6 +2008,7 @@ exports.getAnalytics = async (req, res) => {
       },
       monthly: {
         totalSales: monthlyData.totalSales,
+        totalGymwearSales: monthlyData.totalGymwearSales,
         totalSupplementsSales: monthlyData.totalSupplementsSales,
         completedOrders: monthlyData.totalOrders,
         totalTaxes: monthlyData.totalTaxes,
@@ -2000,6 +2021,7 @@ exports.getAnalytics = async (req, res) => {
       },
       weekly: {
         totalSales: weeklyData.totalSales,
+        totalGymwearSales: weeklyData.totalGymwearSales,
         totalSupplementsSales: weeklyData.totalSupplementsSales,
         completedOrders: weeklyData.totalOrders,
         totalTaxes: weeklyData.totalTaxes,
@@ -2012,6 +2034,7 @@ exports.getAnalytics = async (req, res) => {
       },
       yearly: {
         totalSales: yearlyData.totalSales,
+        totalGymwearSales: yearlyData.totalGymwearSales,
         totalSupplementsSales: yearlyData.totalSupplementsSales,
         completedOrders: yearlyData.totalOrders,
         totalTaxes: yearlyData.totalTaxes,
@@ -2024,6 +2047,7 @@ exports.getAnalytics = async (req, res) => {
       },
       today: {
         totalSales: todayData.totalSales,
+        totalGymwearSales: todayData.totalGymwearSales,
         totalSupplementsSales: todayData.totalSupplementsSales,
         completedOrders: todayData.totalOrders,
         totalTaxes: todayData.totalTaxes,
@@ -2040,6 +2064,7 @@ exports.getAnalytics = async (req, res) => {
     if (customData) {
       analytics.custom = {
         totalSales: customData.totalSales,
+        totalGymwearSales: customData.totalGymwearSales,
         totalSupplementsSales: customData.totalSupplementsSales,
         completedOrders: customData.totalOrders,
         totalTaxes: customData.totalTaxes,

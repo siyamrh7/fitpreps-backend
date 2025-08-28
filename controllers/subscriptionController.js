@@ -1933,6 +1933,7 @@ exports.getSubscriptions = async (req, res) => {
       userId,
       status,
       frequency,
+      recurringStatus,
       startDate,
       searchTerm,
       endDate,
@@ -1983,6 +1984,10 @@ exports.getSubscriptions = async (req, res) => {
 
     if (frequency) {
       filter.frequency = frequency;
+    }
+
+    if (recurringStatus) {
+      filter.recurringStatus = recurringStatus;
     }
     
     // Add filter for pending cancellation if provided

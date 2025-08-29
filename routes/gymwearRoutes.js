@@ -8,6 +8,9 @@ const uploadMultiple = require('../middleware/uploadMultiple'); // Import the Mu
 // Create a new gymwear product
 router.post('/create', uploadMultiple, gymwearController.createGymwear);
 
+// Get gymwear revenue analytics
+router.get('/revenue/analytics', gymwearController.getGymwearRevenue);
+
 // Get a single gymwear product by name/slug
 router.get('/:productName', gymwearController.getSingleGymwear);
 

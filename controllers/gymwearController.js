@@ -300,3 +300,289 @@ exports.deleteGymwearById = async (req, res) => {
     res.status(400).json({ message: 'Error deleting gymwear', error });
   }
 };
+
+// Get gymwear revenue analytics
+exports.getGymwearRevenue = async (req, res) => {
+  try {
+    const ordersCollection = getDB().collection('orders');
+
+    const { startDate, endDate, password } = req.query;
+    if (password !== 'rayisgreat') {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const hasCustomDateRange = startDate && endDate;
+
+    const getDateRange = (type) => {
+      const now = new Date();
+      const start = new Date(now);
+
+      switch (type) {
+        case 'monthly':
+          start.setDate(1);
+          break;
+        case 'weekly':
+          start.setDate(now.getDate() - now.getDay() + 1);
+          break;
+        case 'yearly':
+          start.setMonth(0, 1);
+          break;
+        case 'today':
+          start.setHours(0, 0, 0, 0);
+          break;
+        case 'custom':
+          return {
+            start: new Date(startDate),
+            end: new Date(endDate)
+          };
+        default:
+          throw new Error('Invalid date range type');
+      }
+
+      return { start, end: now };
+    };
+
+    const aggregateGymwearSales = async (start, end) => {
+      const result = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: {
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+          },
+        },
+        {
+          $match: {
+            status: 'completed',
+            createdAtDate: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalGymwearSales: {
+              $sum: {
+                $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 }
+              }
+            },
+            totalOrders: { $sum: 1 },
+            gymwearOrders: {
+              $sum: {
+                $cond: [
+                  { $gt: [{ $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 } }, 0] },
+                  1,
+                  0
+                ]
+              }
+            }
+          },
+        },
+      ]).toArray();
+
+      return {
+        totalGymwearSales: result[0]?.totalGymwearSales || 0,
+        totalOrders: result[0]?.totalOrders || 0,
+        gymwearOrders: result[0]?.gymwearOrders || 0,
+      };
+    };
+
+    const totalGymwearSalesAgg = await ordersCollection.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalGymwearSales: {
+            $sum: { $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 } }
+          },
+          totalOrders: { $sum: 1 },
+          gymwearOrders: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 } }, 0] },
+                1,
+                0
+              ]
+            }
+          }
+        },
+      },
+    ]).toArray();
+
+    const aggregateMonthlyGymwearRevenue = async () => {
+      const result = await ordersCollection.aggregate([
+        {
+          $match: { status: 'completed' },
+        },
+        {
+          $project: {
+            createdAtDate: {
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            year: {
+              $year: {
+                $cond: {
+                  if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                  then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                  else: "$createdAt"
+                }
+              }
+            },
+            month: {
+              $month: {
+                $cond: {
+                  if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                  then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                  else: "$createdAt"
+                }
+              }
+            },
+            gymwearTotalAsNumber: {
+              $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 }
+            },
+          },
+        },
+        {
+          $group: {
+            _id: { year: "$year", month: "$month" },
+            totalGymwearSales: { $sum: "$gymwearTotalAsNumber" },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ]).toArray();
+
+      const monthlyGymwearRevenue = Array(12).fill(0);
+      result.forEach(item => {
+        if (item._id && item._id.month) {
+          const monthIndex = item._id.month - 1;
+          if (monthIndex >= 0 && monthIndex < 12) {
+            monthlyGymwearRevenue[monthIndex] = item.totalGymwearSales;
+          }
+        }
+      });
+      return monthlyGymwearRevenue;
+    };
+
+    const aggregateDailyGymwearRevenue = async () => {
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      const last30Days = [];
+      for (let i = 0; i < 30; i++) {
+        const day = new Date(thirtyDaysAgo);
+        day.setDate(thirtyDaysAgo.getDate() + i);
+        last30Days.push(day.toISOString().split('T')[0]);
+      }
+
+      const result = await ordersCollection.aggregate([
+        {
+          $addFields: {
+            createdAtDate: {
+              $cond: {
+                if: { $eq: [{ $type: "$createdAt" }, "string"] },
+                then: { $dateFromString: { dateString: "$createdAt", onError: new Date(0) } },
+                else: "$createdAt"
+              }
+            },
+            gymwearTotalAsNumber: {
+              $convert: { input: { $ifNull: ["$metadata._gymwear_total", "0"] }, to: "double", onError: 0 }
+            },
+          },
+        },
+        {
+          $match: {
+            status: 'completed',
+            createdAtDate: { $gte: thirtyDaysAgo, $lte: today },
+          },
+        },
+        { $project: { createdAtDate: 1, gymwearTotalAsNumber: 1 } },
+        {
+          $group: {
+            _id: { createdAtDate: { $dateToString: { format: "%Y-%m-%d", date: "$createdAtDate", onNull: "1970-01-01" } } },
+            totalGymwearSales: { $sum: "$gymwearTotalAsNumber" },
+          },
+        },
+        { $sort: { "_id.createdAtDate": 1 } },
+      ]).toArray();
+
+      const dailyGymwearRevenue = Array(30).fill(0);
+      result.forEach(item => {
+        if (item._id && item._id.createdAtDate) {
+          const index = last30Days.indexOf(item._id.createdAtDate);
+          if (index >= 0) {
+            dailyGymwearRevenue[index] = item.totalGymwearSales;
+          }
+        }
+      });
+
+      return dailyGymwearRevenue;
+    };
+
+    const { start: startOfMonth, end: endOfMonth } = getDateRange('monthly');
+    const { start: startOfWeek, end: endOfWeek } = getDateRange('weekly');
+    const { start: startOfYear, end: endOfYear } = getDateRange('yearly');
+    const { start: startOfToday, end: endOfToday } = getDateRange('today');
+
+    let customData = null;
+    if (hasCustomDateRange) {
+      const { start: customStart, end: customEnd } = getDateRange('custom');
+      customData = await aggregateGymwearSales(customStart, customEnd);
+    }
+
+    const monthlyData = await aggregateGymwearSales(startOfMonth, endOfMonth);
+    const weeklyData = await aggregateGymwearSales(startOfWeek, endOfWeek);
+    const yearlyData = await aggregateGymwearSales(startOfYear, endOfYear);
+    const todayData = await aggregateGymwearSales(startOfToday, endOfToday);
+
+    const monthlyGymwearRevenue = await aggregateMonthlyGymwearRevenue();
+    const dailyGymwearRevenue = await aggregateDailyGymwearRevenue();
+
+    const gymwearRevenue = {
+      totalGymwearSales: totalGymwearSalesAgg[0]?.totalGymwearSales || 0,
+      gymwearOrders: totalGymwearSalesAgg[0]?.gymwearOrders || 0,
+      monthlyGymwearRevenue,
+      dailyGymwearRevenue,
+      total: {
+        totalGymwearSales: totalGymwearSalesAgg[0]?.totalGymwearSales || 0,
+        gymwearOrders: totalGymwearSalesAgg[0]?.gymwearOrders || 0,
+      },
+      monthly: {
+        totalGymwearSales: monthlyData.totalGymwearSales,
+        gymwearOrders: monthlyData.gymwearOrders,
+      },
+      weekly: {
+        totalGymwearSales: weeklyData.totalGymwearSales,
+        gymwearOrders: weeklyData.gymwearOrders,
+      },
+      yearly: {
+        totalGymwearSales: yearlyData.totalGymwearSales,
+        gymwearOrders: yearlyData.gymwearOrders,
+      },
+      today: {
+        totalGymwearSales: todayData.totalGymwearSales,
+        gymwearOrders: todayData.gymwearOrders,
+      },
+    };
+
+    if (customData) {
+      gymwearRevenue.custom = {
+        totalGymwearSales: customData.totalGymwearSales,
+        totalOrders: customData.totalOrders,
+        gymwearOrders: customData.gymwearOrders,
+        dateRange: { startDate, endDate }
+      };
+    }
+
+    res.status(200).json(gymwearRevenue);
+  } catch (error) {
+    console.error('Error fetching gymwear revenue:', error);
+    res.status(400).json({ message: 'Error fetching gymwear revenue', error: error.toString() });
+  }
+};

@@ -17,12 +17,20 @@ const frozenContract = 97220
 // Create order API route
 exports.createOrder = async (req, res) => {
   try {
-    const { total } = req.body;
+    const { total, requestId } = req.body;
 
 
     // Step 2: Create an Order in the Database
     const ordersCollection = getDB().collection('orders');
-
+    if(total == 0){
+      const findRequestId = await ordersCollection.findOne({ requestId: requestId });
+      if (findRequestId) {
+        return res.status(200).json({
+          message: 'Order created successfully',
+          paymentUrl: `${process.env.FRONTEND_URI}/payment-success?coupon=true`,
+        });
+      }
+    }
     const results = await ordersCollection.insertOne(req.body);
 
     // Add user to Klaviyo

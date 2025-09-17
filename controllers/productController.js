@@ -267,7 +267,7 @@ exports.getAllProducts = async (req, res) => {
         badges: 1,
         cost_price: 1,
         weight_options: 1,
-        
+        _real_price: 1,
       },
     };
 

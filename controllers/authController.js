@@ -7,12 +7,49 @@ const crypto = require('crypto');
 const emailQueue = require('./emailQueue');
 const addUserToKlaviyo = require('./klaviyoController');
 const { ObjectId } = require('mongodb');
+
+// Function to verify reCAPTCHA token
+const verifyCaptcha = async (token) => {
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    if (!secretKey) {
+      console.error('RECAPTCHA_SECRET_KEY not found in environment variables');
+      return false;
+    }
+
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${secretKey}&response=${token}`,
+    });
+
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    console.error('Error verifying reCAPTCHA:', error);
+    return false;
+  }
+};
 // Controller to handle user registration
 exports.register = async (req, res) => {
   try {
-    const { metadata, email, password } = req.body;
+    const { metadata, email, password, captcha } = req.body;
+    
+    // Validate required fields
     if (!email || !password) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Verify reCAPTCHA token
+    const captchaValid = await verifyCaptcha(captcha);
+    if (!captchaValid) {
+      return res.status(400).json({ message: 'reCAPTCHA verification failed. Please try again.' });
     }
 
     // Get the MongoDB collection

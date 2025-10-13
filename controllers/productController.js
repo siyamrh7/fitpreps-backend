@@ -2,7 +2,22 @@
 const { getDB } = require('../config/db');
 const fs = require('fs');
 const path = require('path');
-const { ObjectId } = require("mongodb")
+const { ObjectId } = require("mongodb");
+const Redis = require("ioredis");
+const redis = new Redis({
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 3,
+  lazyConnect: true
+});
+
+// Handle Redis connection errors gracefully
+redis.on('error', (err) => {
+  console.log('Redis not available - caching disabled');
+});
+
+redis.on('connect', () => {
+  console.log('Redis connected - caching enabled');
+});
 // exports.createProduct = async (req, res) => {
 //   try {
 //     const productsCollection = getDB().collection('products');
@@ -209,18 +224,35 @@ exports.updateProduct = async (req, res) => {
 
 
 exports.getAllProducts = async (req, res) => {
+  // Create cache key based on category
+  const category = req.query.category || 'all';
+  const cacheKey = `products_${category}`;
+
   try {
+    // 1️⃣ Check Redis cache first
+    let cachedData = null;
+    try {
+      cachedData = await redis.get(cacheKey);
+      if (cachedData && cachedData !== 'null' && cachedData !== '') {
+        console.log("✅ Serving from Redis cache");
+        return res.json(JSON.parse(cachedData));
+      }
+    } catch (redisError) {
+      console.log("Redis not available - fetching from MongoDB");
+    }
+
+    // 2️⃣ If not cached, fetch from MongoDB with ALL original logic
     const productsCollection = getDB().collection('products');
 
     // Retrieve the category filter from the request query
-    const category = req.query.category;
+    const categoryFilter = req.query.category;
 
-    // Define the filter
+    // Define the filter (keeping ALL original logic)
     let filter;
-    if (category === 'admin') {
+    if (categoryFilter === 'admin') {
       // Admin case: Return all products with status "publish"
       filter = { status: "publish" };
-    } else if (category === 'Smakelijke') {
+    } else if (categoryFilter === 'Smakelijke') {
       // Special case: When "Smakelijke" is selected, return products from both Smakelijke categories
       filter = { 
         status: "publish", 
@@ -228,9 +260,9 @@ exports.getAllProducts = async (req, res) => {
           $in: ["Smakelijke maaltijden", "Smakelijke pakketten"] 
         } 
       };
-    } else if (category && category !== 'Alle') {
+    } else if (categoryFilter && categoryFilter !== 'Alle') {
       // When specific category is selected
-      filter = { status: "publish", categories: category };
+      filter = { status: "publish", categories: categoryFilter };
     } else {
       // When "Alle" is selected or no category is provided, exclude specific categories
       filter = { 
@@ -241,7 +273,7 @@ exports.getAllProducts = async (req, res) => {
       };
     }
 
-    // Define the projection to return only the required fields
+    // Define the projection to return only the required fields (keeping ALL original projections)
     const projection = {
       name: 1,
       description: 1,
@@ -274,6 +306,15 @@ exports.getAllProducts = async (req, res) => {
     // Fetch products with filter and projection
     const products = await productsCollection.find(filter, { projection }).toArray();
 
+    // 3️⃣ Cache the results for 60 seconds
+    try {
+      await redis.set(cacheKey, JSON.stringify(products), "EX", 60);
+      console.log("💾 Data cached successfully");
+    } catch (redisError) {
+      console.log("Could not cache data - Redis not available");
+    }
+
+    console.log("📊 Serving from MongoDB");
     res.status(200).json(products);
   } catch (error) {
     res.status(400).json({ message: 'Error fetching products', error });

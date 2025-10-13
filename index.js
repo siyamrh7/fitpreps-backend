@@ -2,6 +2,7 @@
 require('dotenv').config(); // Load environment variables
 const express = require('express');
 const bodyParser = require('body-parser');
+const compression = require("compression");
 const cors = require('cors');
 const path = require('path');
 const { connectDB } = require('./config/db');
@@ -28,6 +29,7 @@ connectDB();
 
 // Middleware
 app.use(cors());
+app.use(compression());
 // For form-urlencoded data (what Mollie typically sends)
 app.use(express.urlencoded({ extended: true }));
 

@@ -1987,7 +1987,12 @@ exports.getSubscriptions = async (req, res) => {
     }
 
     if (recurringStatus) {
-      filter.recurringStatus = recurringStatus;
+      if (recurringStatus === 'others') {
+        // Filter for recurring statuses that are not paid, pending, or failed
+        filter.recurringStatus = { $nin: ['paid', 'pending', 'failed'] };
+      } else {
+        filter.recurringStatus = recurringStatus;
+      }
     }
     
     // Add filter for pending cancellation if provided

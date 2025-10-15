@@ -385,7 +385,8 @@ async function processPointDeliveries(date) {
         status: 'subscription',
         total:(parseFloat(sub.pointsUsed)/10).toFixed(2).toString()
       });
-      
+      const orderData = await getDB().collection("orders").findOne({ _id: orderResult.insertedId });
+
       // Send to SendCloud
       try {
         const username = process.env.SENDCLOUD_API_USERNAME;
@@ -394,7 +395,6 @@ async function processPointDeliveries(date) {
         // Encode the credentials in base64
         const base64Credentials = btoa(`${username}:${password}`);
         
-        const orderData = await getDB().collection("orders").findOne({ _id: orderResult.insertedId });
         await trackPlacedRecurringSubscriptionOrder(orderData);
         await trackSubscriptionPlacedOrder(orderData);
         // Prepare parcel data for SendCloud
@@ -492,11 +492,19 @@ async function processPointDeliveries(date) {
    
       // Calculate next delivery date based on frequency
       const nextDeliveryDate = calculateNextDate(date, sub.frequency);
-      
+
       // Update subscription with next delivery date
       await db.collection("subscriptions").updateOne(
         { _id: sub._id },
-        { $set: { deliveryDate: nextDeliveryDate } }
+        { $set: { deliveryDate: nextDeliveryDate },  $push: {
+          activity: {
+            type: 'subscription_started',
+            pointsUsed: parseInt(orderData.total * 10),
+            date: DateTime.now().setZone('Europe/Amsterdam').toJSDate(),
+            items: orderData.items,
+            deliveryDate: orderData.metadata._delivery_date
+          }
+        } }
       );
       
       if(sub.pendingCancellationConfirmed){

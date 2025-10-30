@@ -86,7 +86,8 @@ exports.updateBlog = async (req, res) => {
       if (req.file) {
         updatedBlog.image = req.file.filename; // Update image field
       }
-  
+      updatedBlog.updatedAt = new Date();
+      updatedBlog.createdAt = new Date();
       // Update blog in the database
       await getDB().collection("blogs").updateOne(
         { _id: new ObjectId(id) },

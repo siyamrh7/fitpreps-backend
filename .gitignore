@@ -26,6 +26,7 @@ dump.rdb
 # Coverage directory used by tools like istanbul
 coverage
 *.lcov
+Blog_API_Collection.postman_collection.json
 *.md
 # nyc test coverage
 .nyc_output

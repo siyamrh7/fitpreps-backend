@@ -58,7 +58,16 @@ exports.getBlogs = async (req, res) => {
 exports.createBlog = async (req, res) => {
   try {
     const newBlog = req.body;
-    const result = await getDB().collection('blogs').insertOne({...newBlog,image:req.file.filename});
+    
+    // Add image filename only if a file was uploaded
+    if (req.file) {
+      newBlog.image = req.file.filename;
+    }
+    
+    // Add createdAt timestamp
+    newBlog.createdAt = new Date();
+    
+    const result = await getDB().collection('blogs').insertOne(newBlog);
     res.status(201).json(result);
   } catch (error) {
     
